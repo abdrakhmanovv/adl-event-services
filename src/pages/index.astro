@@ -465,6 +465,37 @@ const media = (id: string, file: string) => asset(`/media/scenes/${id}/${file}`)
     }
   }
 
+  /* низкие окна (телефон в ландшафте, маленькое окно браузера): текст должен помещаться */
+  @media (max-height: 640px) {
+    .scenes {
+      min-height: 0;
+    }
+    .scene__content {
+      padding-bottom: 72px;
+    }
+    .scene__text {
+      gap: var(--space-3);
+    }
+    .scene__title,
+    .scene__text--first .scene__title {
+      font-size: clamp(1.3rem, 4.6vh, 2.4rem);
+    }
+    .scene__lead {
+      font-size: var(--fs-0);
+      max-width: 40em;
+    }
+    .scenes__hint {
+      display: none;
+    }
+  }
+
+  /* телефон в ландшафте: точки навигации перекрывают кнопки, прогресс показывает счётчик */
+  @media (max-width: 768px) and (max-height: 640px) {
+    .scenes__nav {
+      display: none;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .scenes__hint .icon {
       animation: none;
