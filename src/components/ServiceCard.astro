@@ -1,0 +1,74 @@
+---
+import Icon from './Icon.astro';
+import { url } from '@/lib/url';
+import type { Service } from '@/content/ru/services';
+
+interface Props {
+  service: Service;
+}
+const { service } = Astro.props;
+---
+
+<a class="service-card" href={url('/' + service.slug)}>
+  <Icon name={service.icon} size={28} class="service-card__icon" />
+  <span class="service-card__body">
+    <span class="service-card__title">{service.title}</span>
+    <span class="service-card__text">{service.short}</span>
+  </span>
+  <Icon name="arrow-right" size={20} class="service-card__arrow" />
+</a>
+
+<style>
+  .service-card {
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    gap: var(--space-5);
+    min-height: 220px;
+    padding: var(--space-5);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--paper);
+    transition:
+      border-color var(--dur-fast) var(--ease-out),
+      transform var(--dur-fast) var(--ease-out);
+  }
+
+  .service-card:hover {
+    border-color: var(--ink);
+    transform: translateY(-2px);
+  }
+
+  .service-card__icon {
+    color: var(--accent);
+  }
+
+  .service-card__body {
+    display: grid;
+    gap: 6px;
+    align-content: start;
+  }
+
+  .service-card__title {
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    font-weight: 500;
+    line-height: 1.25;
+  }
+
+  .service-card__text {
+    font-size: var(--fs-0);
+    color: var(--ink-2);
+    line-height: 1.45;
+  }
+
+  .service-card__arrow {
+    color: var(--ink-3);
+    justify-self: end;
+    transition: transform var(--dur-fast) var(--ease-out), color var(--dur-fast);
+  }
+
+  .service-card:hover .service-card__arrow {
+    transform: translateX(4px);
+    color: var(--ink);
+  }
+</style>

@@ -1,0 +1,130 @@
+---
+import Base from '@/layouts/Base.astro';
+import Icon from '@/components/Icon.astro';
+import CTABand from '@/components/CTABand.astro';
+import { url } from '@/lib/url';
+
+/**
+ * Реализованные проекты. Добавляйте объекты в массив по мере появления кейсов:
+ * { event, client, task, done: [...], result }
+ */
+const cases: {
+  event: string;
+  client: string;
+  task: string;
+  done: string[];
+  result: string;
+}[] = [];
+---
+
+<Base title="Кейсы" description="Реализованные проекты ADL Event Services: задачи участников и делегаций, что сделано и с каким результатом.">
+  <section class="hero">
+    <div class="container hero__inner">
+      <h1>Кейсы</h1>
+      <p class="lead">
+        Здесь публикуем реализованные проекты: какая была задача, что мы организовали и что получил клиент.
+      </p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      {
+        cases.length === 0 ? (
+          <div class="empty">
+            <Icon name="briefcase" size={32} />
+            <h2>Первые кейсы появятся после Kazakhstan Machinery Fair 2027</h2>
+            <p>
+              Направление сопровождения мероприятий мы запускаем к KMF 2027. За плечами у ADL курьерская и логистическая практика в Астане, и именно на ней построена работа с участниками выставок. Пока кейсов нет, посмотрите, как устроена работа с координатором.
+            </p>
+            <div class="btn-row">
+              <a class="btn btn--primary" href={url('/event-support')}>Как мы работаем</a>
+              <a class="btn btn--ghost" href={url('/letters')}>Рекомендательные письма</a>
+            </div>
+          </div>
+        ) : (
+          <div class="grid grid--2">
+            {cases.map((c) => (
+              <article class="card case">
+                <p class="case__event">{c.event}</p>
+                <h2 class="case__client">{c.client}</h2>
+                <p class="case__label">Задача</p>
+                <p>{c.task}</p>
+                <p class="case__label">Что сделали</p>
+                <ul class="check-list">
+                  {c.done.map((d) => (
+                    <li>
+                      <Icon name="check" />
+                      <span>{d}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p class="case__label">Результат</p>
+                <p>{c.result}</p>
+              </article>
+            ))}
+          </div>
+        )
+      }
+    </div>
+  </section>
+
+  <CTABand />
+</Base>
+
+<style>
+  .hero {
+    padding-block: var(--space-8);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .hero__inner {
+    display: grid;
+    gap: var(--space-4);
+    max-width: 52rem;
+  }
+
+  .empty {
+    display: grid;
+    gap: var(--space-4);
+    max-width: 44rem;
+    padding: var(--space-7);
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--radius-lg);
+  }
+
+  .empty .icon {
+    color: var(--accent);
+  }
+
+  .empty h2 {
+    font-size: var(--fs-h3);
+  }
+
+  .empty p {
+    color: var(--ink-2);
+  }
+
+  .case {
+    display: grid;
+    gap: var(--space-2);
+    align-content: start;
+  }
+
+  .case__event {
+    font-size: var(--fs-0);
+    color: var(--ink-3);
+  }
+
+  .case__client {
+    font-size: var(--fs-h3);
+    margin-bottom: var(--space-2);
+  }
+
+  .case__label {
+    margin-top: var(--space-3);
+    font-weight: 500;
+    font-size: var(--fs-0);
+    color: var(--ink-3);
+  }
+</style>

@@ -1,0 +1,84 @@
+---
+/** Реальный трёхшаговый процесс — нумерация здесь уместна. */
+interface Props {
+  compact?: boolean;
+}
+const { compact = false } = Astro.props;
+
+const steps = [
+  {
+    title: 'Заявка',
+    text: 'Опишите задачу в форме или в WhatsApp: сроки, число людей, что именно нужно. Точность не обязательна, детали уточним.',
+  },
+  {
+    title: 'Координатор',
+    text: 'В течение 30 минут в рабочее время с вами связывается координатор, уточняет детали и присылает предложение со стоимостью.',
+  },
+  {
+    title: 'Решение',
+    text: 'Организуем услугу сами или подключаем проверенного подрядчика. Остаёмся на связи до завершения мероприятия.',
+  },
+];
+---
+
+<section class:list={['section', 'steps', compact && 'section--tight']} aria-labelledby="steps-title">
+  <div class="container">
+    <div class="section-head">
+      <h2 id="steps-title">Как мы работаем</h2>
+      <p class="lead">Один контакт на всём протяжении: от первой заявки до трансфера в аэропорт.</p>
+    </div>
+    <ol class="steps__list">
+      {
+        steps.map((s, i) => (
+          <li class="steps__item">
+            <span class="steps__num">{i + 1}</span>
+            <h3>{s.title}</h3>
+            <p>{s.text}</p>
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+</section>
+
+<style>
+  .steps__list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-5);
+    counter-reset: step;
+  }
+
+  .steps__item {
+    position: relative;
+    padding: var(--space-6);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--paper);
+    display: grid;
+    gap: var(--space-3);
+    align-content: start;
+  }
+
+  .steps__num {
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--gold-soft);
+    color: var(--gold-strong);
+    font-family: var(--font-display);
+    font-weight: 500;
+  }
+
+  .steps__item p {
+    color: var(--ink-2);
+  }
+
+  @media (max-width: 800px) {
+    .steps__list {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

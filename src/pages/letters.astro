@@ -1,0 +1,105 @@
+---
+import Base from '@/layouts/Base.astro';
+import Icon from '@/components/Icon.astro';
+import CTABand from '@/components/CTABand.astro';
+import { asset } from '@/lib/url';
+
+/**
+ * Рекомендательные письма. Положите сканы в public/letters/ и добавьте записи:
+ * { company, title, file: 'название.pdf' | 'название.jpg', year }
+ */
+const letters: { company: string; title: string; file: string; year: string }[] = [];
+---
+
+<Base title="Рекомендательные письма" description="Официальные отзывы, сканы благодарностей и рекомендательные письма от клиентов и партнёров ADL Event Services.">
+  <section class="hero">
+    <div class="container hero__inner">
+      <h1>Рекомендательные письма</h1>
+      <p class="lead">Официальные отзывы и благодарности от клиентов и партнёров.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      {
+        letters.length === 0 ? (
+          <div class="empty">
+            <Icon name="file-text" size={32} />
+            <h2>Письма публикуем по мере получения</h2>
+            <p>
+              После каждого мероприятия мы просим клиентов об официальном отзыве. Сканы писем будут появляться на этой странице. Если вам нужны рекомендации от наших партнёров уже сейчас, запросите их у координатора.
+            </p>
+          </div>
+        ) : (
+          <div class="grid grid--3">
+            {letters.map((l) => (
+              <a class="card letter" href={asset('/letters/' + l.file)} target="_blank" rel="noopener">
+                <Icon name="file-text" size={28} />
+                <span class="letter__company">{l.company}</span>
+                <span class="letter__title">{l.title}</span>
+                <span class="letter__year">{l.year}</span>
+              </a>
+            ))}
+          </div>
+        )
+      }
+    </div>
+  </section>
+
+  <CTABand />
+</Base>
+
+<style>
+  .hero {
+    padding-block: var(--space-8);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .hero__inner {
+    display: grid;
+    gap: var(--space-4);
+    max-width: 52rem;
+  }
+
+  .empty {
+    display: grid;
+    gap: var(--space-4);
+    max-width: 44rem;
+    padding: var(--space-7);
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--radius-lg);
+  }
+
+  .empty .icon {
+    color: var(--accent);
+  }
+
+  .empty h2 {
+    font-size: var(--fs-h3);
+  }
+
+  .empty p {
+    color: var(--ink-2);
+  }
+
+  .letter {
+    display: grid;
+    gap: var(--space-2);
+    align-content: start;
+  }
+
+  .letter .icon {
+    color: var(--accent);
+    margin-bottom: var(--space-2);
+  }
+
+  .letter__company {
+    font-weight: 500;
+  }
+
+  .letter__title,
+  .letter__year {
+    color: var(--ink-3);
+    font-size: var(--fs-0);
+  }
+</style>

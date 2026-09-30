@@ -1,0 +1,434 @@
+---
+import Icon from './Icon.astro';
+import Logo from './Logo.astro';
+import { site, nav, contactLinks } from '@/content/ru/site';
+import { services } from '@/content/ru/services';
+import { url } from '@/lib/url';
+
+interface Props {
+  variant?: 'light' | 'night';
+}
+const { variant = 'light' } = Astro.props;
+
+const current = Astro.url.pathname.replace(/\/$/, '');
+const isActive = (href: string) => current === url(href).replace(/\/$/, '');
+---
+
+<header class="site-header" data-variant={variant} id="site-header">
+  <div class="container site-header__inner">
+    <a class="logo" href={url('/')} aria-label={`${site.name} — на главную`}>
+      <Logo size={34} />
+    </a>
+
+    <nav class="nav" aria-label="Основное меню">
+      <ul class="nav__list">
+        {
+          nav.map((item) =>
+            item.children ? (
+              <li class="nav__item nav__item--menu">
+                <a href={url(item.href)} class="nav__link" aria-haspopup="true">
+                  {item.label}
+                  <Icon name="chevron-down" size={16} />
+                </a>
+                <div class="menu">
+                  <ul class="menu__list">
+                    {services.map((s) => (
+                      <li>
+                        <a href={url('/' + s.slug)} class="menu__link">
+                          <Icon name={s.icon} size={22} />
+                          <span>
+                            <b>{s.title}</b>
+                            <small>{s.short}</small>
+                          </span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </li>
+            ) : (
+              <li class="nav__item">
+                <a
+                  href={url(item.href)}
+                  class="nav__link"
+                  aria-current={isActive(item.href) ? 'page' : undefined}
+                >
+                  {item.label}
+                </a>
+              </li>
+            ),
+          )
+        }
+      </ul>
+    </nav>
+
+    <div class="site-header__actions">
+      <a class="phone" href={site.phoneHref}>
+        <Icon name="phone" size={18} />
+        <span>{site.phone}</span>
+      </a>
+      <a class="btn btn--sm cta" href={url('/contacts#form')}>Оставить заявку</a>
+      <button
+        class="burger"
+        type="button"
+        id="burger"
+        aria-expanded="false"
+        aria-controls="mobile-nav"
+        aria-label="Открыть меню"
+      >
+        <Icon name="menu" class="burger__open" />
+        <Icon name="x" class="burger__close" />
+      </button>
+    </div>
+  </div>
+
+  <div class="drawer" id="mobile-nav" hidden>
+    <div class="container drawer__inner">
+      <ul class="drawer__list">
+        {
+          nav
+            .filter((i) => !i.children)
+            .map((item) => (
+              <li>
+                <a href={url(item.href)} class="drawer__link">
+                  {item.label}
+                </a>
+              </li>
+            ))
+        }
+      </ul>
+      <p class="drawer__title">Услуги</p>
+      <ul class="drawer__services">
+        {
+          services.map((s) => (
+            <li>
+              <a href={url('/' + s.slug)} class="drawer__service">
+                <Icon name={s.icon} size={20} />
+                {s.title}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+      <div class="drawer__contacts">
+        <a href={site.phoneHref} class="drawer__contact"><Icon name="phone" size={18} />{site.phone}</a>
+        <a href={contactLinks.mail()} class="drawer__contact"><Icon name="mail" size={18} />{site.email}</a>
+        <div class="btn-row">
+          <a class="btn btn--primary" href={url('/contacts#form')}>Оставить заявку</a>
+          <a class="btn btn--ghost" href={contactLinks.whatsapp()} target="_blank" rel="noopener">
+            <Icon name="message-circle" />WhatsApp
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<script>
+  const header = document.getElementById('site-header');
+  const burger = document.getElementById('burger');
+  const drawer = document.getElementById('mobile-nav');
+
+  if (header && burger && drawer) {
+    const setOpen = (open: boolean) => {
+      burger.setAttribute('aria-expanded', String(open));
+      burger.setAttribute('aria-label', open ? 'Закрыть меню' : 'Открыть меню');
+      drawer.hidden = !open;
+      header.classList.toggle('is-open', open);
+      document.documentElement.classList.toggle('nav-open', open);
+    };
+    burger.addEventListener('click', () => setOpen(drawer.hidden));
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !drawer.hidden) setOpen(false);
+    });
+    window.addEventListener('resize', () => {
+      if (window.innerWidth > 1024 && !drawer.hidden) setOpen(false);
+    });
+
+    // на светлых страницах — тень при скролле
+    const onScroll = () => header.classList.toggle('is-scrolled', window.scrollY > 8);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+  }
+</script>
+
+<style>
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    height: var(--header-h);
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid transparent;
+    transition:
+      background var(--dur) var(--ease-out),
+      border-color var(--dur) var(--ease-out),
+      color var(--dur) var(--ease-out);
+  }
+
+  .site-header.is-scrolled {
+    border-bottom-color: var(--line);
+  }
+
+  .site-header[data-variant='night'] {
+    position: fixed;
+    left: 0;
+    right: 0;
+    color: var(--cream);
+    background: linear-gradient(to bottom, rgba(15, 12, 10, 0.7), rgba(15, 12, 10, 0));
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-bottom-color: transparent;
+  }
+
+  /* когда главная прокручена ниже сцен — шапка становится светлой */
+  .site-header[data-variant='night'].is-light {
+    color: var(--ink);
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom-color: var(--line);
+  }
+
+  .site-header__inner {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    gap: var(--space-6);
+  }
+
+  .logo {
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+    margin-right: auto;
+  }
+
+  .nav__list {
+    display: flex;
+    gap: 4px;
+  }
+
+  .nav__item {
+    position: relative;
+  }
+
+  .nav__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 10px 12px;
+    border-radius: var(--radius-pill);
+    font-weight: 500;
+    font-size: 0.95rem;
+    transition: background var(--dur-fast);
+  }
+
+  .nav__link:hover,
+  .nav__link[aria-current='page'] {
+    background: rgba(21, 24, 28, 0.06);
+  }
+
+  .site-header[data-variant='night']:not(.is-light) .nav__link:hover,
+  .site-header[data-variant='night']:not(.is-light) .nav__link[aria-current='page'] {
+    background: var(--cream-15);
+  }
+
+  .menu {
+    position: absolute;
+    top: 100%;
+    left: -12px;
+    padding-top: 10px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(6px);
+    transition:
+      opacity var(--dur-fast) var(--ease-out),
+      transform var(--dur-fast) var(--ease-out),
+      visibility 0s linear var(--dur-fast);
+  }
+
+  .nav__item--menu:hover .menu,
+  .nav__item--menu:focus-within .menu {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    transition-delay: 0s;
+  }
+
+  .menu__list {
+    width: 560px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    padding: 10px;
+    background: var(--paper);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-2);
+  }
+
+  .menu__link {
+    display: flex;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: var(--radius);
+    transition: background var(--dur-fast);
+  }
+
+  .menu__link:hover {
+    background: var(--paper-2);
+  }
+
+  .menu__link .icon {
+    color: var(--accent);
+    margin-top: 2px;
+  }
+
+  .menu__link span {
+    display: grid;
+    gap: 2px;
+  }
+
+  .menu__link b {
+    font-weight: 500;
+  }
+
+  .menu__link small {
+    font-size: 0.8rem;
+    color: var(--ink-3);
+    line-height: 1.35;
+  }
+
+  .site-header__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+  }
+
+  .phone {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .site-header[data-variant='night']:not(.is-light) .cta {
+    --btn-bg: var(--cream);
+    --btn-fg: var(--night);
+    --btn-bd: var(--cream);
+  }
+
+  .burger {
+    display: none;
+    width: 44px;
+    height: 44px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+  }
+
+  .burger__close {
+    display: none;
+  }
+
+  .is-open .burger__open {
+    display: none;
+  }
+
+  .is-open .burger__close {
+    display: block;
+  }
+
+  .drawer {
+    position: fixed;
+    inset: var(--header-h) 0 0 0;
+    background: var(--paper);
+    color: var(--ink);
+    overflow-y: auto;
+    border-top: 1px solid var(--line);
+  }
+
+  .drawer__inner {
+    padding-block: var(--space-5) var(--space-8);
+    display: grid;
+    gap: var(--space-5);
+  }
+
+  .drawer__list {
+    display: grid;
+  }
+
+  .drawer__link {
+    display: block;
+    padding: 12px 0;
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .drawer__title {
+    font-size: var(--fs-0);
+    color: var(--ink-3);
+    font-weight: 500;
+  }
+
+  .drawer__services {
+    display: grid;
+    gap: 4px;
+    margin-top: calc(-1 * var(--space-4));
+  }
+
+  .drawer__service {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+  }
+
+  .drawer__service .icon {
+    color: var(--accent);
+  }
+
+  .drawer__contacts {
+    display: grid;
+    gap: var(--space-3);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--line);
+  }
+
+  .drawer__contact {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  @media (max-width: 1024px) {
+    .nav,
+    .phone,
+    .cta {
+      display: none;
+    }
+    .burger {
+      display: inline-flex;
+    }
+    .site-header.is-open {
+      background: var(--paper);
+      color: var(--ink);
+    }
+  }
+
+  @media (max-width: 420px) {
+    .logo :global(.logo-mark__sub) {
+      display: none;
+    }
+  }
+
+  :global(html.nav-open) {
+    overflow: hidden;
+  }
+</style>

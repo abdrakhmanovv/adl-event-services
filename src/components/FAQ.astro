@@ -1,0 +1,88 @@
+---
+import Icon from './Icon.astro';
+import type { FaqItem } from '@/content/types';
+
+interface Props {
+  items: FaqItem[];
+  title?: string;
+  id?: string;
+}
+const { items, title = 'Частые вопросы', id = 'faq' } = Astro.props;
+const group = `faq-${id}`;
+---
+
+<section class="section faq" id={id} aria-labelledby={`${id}-title`}>
+  <div class="container faq__inner">
+    <h2 id={`${id}-title`}>{title}</h2>
+    <div class="faq__list">
+      {
+        items.map((item) => (
+          <details class="faq__item" name={group}>
+            <summary class="faq__q">
+              <span>{item.q}</span>
+              <Icon name="plus" size={20} class="faq__icon" />
+            </summary>
+            <div class="faq__a">
+              <p>{item.a}</p>
+            </div>
+          </details>
+        ))
+      }
+    </div>
+  </div>
+</section>
+
+<style>
+  .faq__inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    gap: var(--space-7);
+    align-items: start;
+  }
+
+  .faq__list {
+    border-top: 1px solid var(--line);
+  }
+
+  .faq__item {
+    border-bottom: 1px solid var(--line);
+  }
+
+  .faq__q {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-4);
+    padding: 18px 0;
+    cursor: pointer;
+    list-style: none;
+    font-weight: 500;
+    font-size: var(--fs-2);
+  }
+
+  .faq__q::-webkit-details-marker {
+    display: none;
+  }
+
+  .faq__icon {
+    color: var(--ink-3);
+    transition: transform var(--dur) var(--ease-out);
+  }
+
+  .faq__item[open] .faq__icon {
+    transform: rotate(45deg);
+  }
+
+  .faq__a {
+    padding: 0 0 20px;
+    color: var(--ink-2);
+    max-width: 60ch;
+  }
+
+  @media (max-width: 800px) {
+    .faq__inner {
+      grid-template-columns: 1fr;
+      gap: var(--space-5);
+    }
+  }
+</style>

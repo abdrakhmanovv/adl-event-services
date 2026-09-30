@@ -1,0 +1,217 @@
+---
+import Base from './Base.astro';
+import Icon from '@/components/Icon.astro';
+import FAQ from '@/components/FAQ.astro';
+import Steps from '@/components/Steps.astro';
+import LeadForm from '@/components/LeadForm.astro';
+import ServiceCard from '@/components/ServiceCard.astro';
+import { url } from '@/lib/url';
+import { contactLinks } from '@/content/ru/site';
+import { serviceBySlug } from '@/content/ru/services';
+import type { ServicePageContent } from '@/content/types';
+
+interface Props {
+  page: ServicePageContent;
+}
+const { page } = Astro.props;
+const related = page.related.map(serviceBySlug).filter(Boolean);
+---
+
+<Base title={page.metaTitle ?? page.title} description={page.metaDescription}>
+  <section class="hero">
+    <div class="container hero__inner">
+      <a class="hero__back" href={url('/event-support')}>
+        <Icon name="arrow-right" size={16} class="hero__back-icon" />Все услуги
+      </a>
+      <h1>{page.title}</h1>
+      <p class="lead">{page.lead}</p>
+      <div class="btn-row">
+        <a class="btn btn--primary btn--lg" href="#form">Запросить услугу</a>
+        <a class="btn btn--ghost btn--lg" href={contactLinks.whatsapp(`Здравствуйте! Интересует: ${page.title}.`)} target="_blank" rel="noopener">
+          <Icon name="message-circle" />Написать в WhatsApp
+        </a>
+      </div>
+    </div>
+  </section>
+
+  {
+    page.intro && (
+      <section class="section section--tight">
+        <div class="container container--narrow prose intro">
+          {page.intro.map((p) => (
+            <p>{p}</p>
+          ))}
+        </div>
+      </section>
+    )
+  }
+
+  {
+    page.blocks.map((block, i) => (
+      <section class:list={['section', i % 2 === 1 && 'section--alt']}>
+        <div class="container">
+          <div class="section-head">
+            <h2>{block.heading}</h2>
+            {block.text && <p class="lead">{block.text}</p>}
+          </div>
+          {block.items && (
+            <div class:list={['grid', block.columns === 2 ? 'grid--2' : 'grid--3']}>
+              {block.items.map((item) => (
+                <div class="card item">
+                  {item.icon && <Icon name={item.icon} size={26} class="item__icon" />}
+                  <h3 class="item__title">{item.title}</h3>
+                  {item.text && <p class="item__text">{item.text}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+          {block.list && (
+            <ul class="check-list check-list--cols">
+              {block.list.map((li) => (
+                <li>
+                  <Icon name="check" />
+                  <span>{li}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </section>
+    ))
+  }
+
+  {
+    (page.notice || page.priceNote) && (
+      <section class="section section--tight">
+        <div class="container notes">
+          {page.notice && (
+            <div class="notice">
+              <Icon name="shield-check" size={24} />
+              <p>{page.notice}</p>
+            </div>
+          )}
+          {page.priceNote && (
+            <div class="notice notice--price">
+              <Icon name="file-text" size={24} />
+              <p>{page.priceNote}</p>
+            </div>
+          )}
+        </div>
+      </section>
+    )
+  }
+
+  <Steps compact />
+
+  <FAQ items={page.faq} id="faq" />
+
+  {
+    related.length > 0 && (
+      <section class="section section--alt">
+        <div class="container">
+          <div class="section-head">
+            <h2>Смежные услуги</h2>
+          </div>
+          <div class="grid grid--3">
+            {related.map((s) => (
+              <ServiceCard service={s!} />
+            ))}
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  <LeadForm
+    id="form"
+    preselect={page.preselect}
+    context={`Заявка: ${page.title}`}
+    title="Запросить услугу"
+    text="Опишите задачу в двух словах. Координатор уточнит детали и пришлёт предложение со стоимостью."
+  />
+</Base>
+
+<style>
+  .hero {
+    padding-block: var(--space-8) var(--space-8);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .hero__inner {
+    display: grid;
+    gap: var(--space-5);
+    max-width: 52rem;
+  }
+
+  .hero__back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--fs-0);
+    color: var(--ink-3);
+    width: fit-content;
+  }
+
+  .hero__back-icon {
+    transform: rotate(180deg);
+  }
+
+  .hero__back:hover {
+    color: var(--ink);
+  }
+
+  .intro {
+    font-size: var(--fs-2);
+    color: var(--ink-2);
+  }
+
+  .item {
+    display: grid;
+    gap: var(--space-3);
+    align-content: start;
+  }
+
+  .item__icon {
+    color: var(--accent);
+  }
+
+  .item__title {
+    font-size: 1.15rem;
+  }
+
+  .item__text {
+    color: var(--ink-2);
+  }
+
+  .check-list--cols {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--space-3) var(--space-6);
+  }
+
+  .notes {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .notice {
+    display: flex;
+    gap: var(--space-4);
+    padding: var(--space-5);
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    max-width: 62rem;
+  }
+
+  .notice--price {
+    border-left-color: var(--ink-3);
+    background: var(--paper-2);
+    color: var(--ink-2);
+  }
+
+  .notice .icon {
+    flex: none;
+    margin-top: 2px;
+  }
+</style>

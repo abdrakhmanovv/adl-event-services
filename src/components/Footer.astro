@@ -1,0 +1,152 @@
+---
+import Icon from './Icon.astro';
+import Logo from './Logo.astro';
+import { site, footerColumns, contactLinks } from '@/content/ru/site';
+import { url } from '@/lib/url';
+const year = new Date().getFullYear();
+---
+
+<footer class="footer">
+  <div class="container">
+    <div class="footer__top">
+      <div class="footer__brand">
+        <a class="footer__logo" href={url('/')}><Logo size={36} /></a>
+        <p class="footer__tagline">
+          Вы занимаетесь бизнесом. Мы занимаемся организацией вашего пребывания.
+        </p>
+        <p class="footer__note">
+          Сопровождение участников, экспонентов и делегаций деловых мероприятий в Казахстане.
+          Работаем на русском, английском и казахском.
+        </p>
+      </div>
+
+      {
+        footerColumns.map((col) => (
+          <div class="footer__col">
+            <p class="footer__title">{col.title}</p>
+            <ul class="footer__links">
+              {col.links.map((l) => (
+                <li>
+                  <a href={url(l.href)}>{l.label}</a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))
+      }
+
+      <div class="footer__col footer__col--contacts">
+        <p class="footer__title">Контакты</p>
+        <ul class="footer__links footer__links--contacts">
+          <li><a href={site.phoneHref}><Icon name="phone" size={18} />{site.phone}</a></li>
+          <li><a href={contactLinks.mail()}><Icon name="mail" size={18} />{site.email}</a></li>
+          <li>
+            <a href={contactLinks.whatsapp()} target="_blank" rel="noopener"><Icon name="message-circle" size={18} />WhatsApp</a>
+          </li>
+          <li>
+            <a href={contactLinks.telegram()} target="_blank" rel="noopener"><Icon name="send" size={18} />Telegram</a>
+          </li>
+          <li><span><Icon name="map-pin" size={18} />{site.address}</span></li>
+          <li><span><Icon name="clock" size={18} />{site.hours}</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer__bottom">
+      <span>© {year} {site.legalName}, {site.city}</span>
+      <a href={url('/contacts')}>Написать координатору</a>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .footer {
+    background: var(--ink);
+    color: var(--cream);
+    padding-block: var(--space-8) var(--space-6);
+  }
+
+  .footer__top {
+    display: grid;
+    grid-template-columns: 1.6fr repeat(3, 1fr) 1.3fr;
+    gap: var(--space-6);
+  }
+
+  .footer__logo {
+    display: inline-flex;
+  }
+
+  .footer__tagline {
+    margin-top: var(--space-4);
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    line-height: 1.35;
+    max-width: 22em;
+  }
+
+  .footer__note {
+    margin-top: var(--space-3);
+    font-size: var(--fs-0);
+    color: var(--cream-70);
+    max-width: 30em;
+  }
+
+  .footer__title {
+    font-weight: 500;
+    margin-bottom: var(--space-3);
+  }
+
+  .footer__links {
+    display: grid;
+    gap: 8px;
+    font-size: var(--fs-0);
+  }
+
+  .footer__links a,
+  .footer__links span {
+    display: inline-flex;
+    gap: 8px;
+    align-items: flex-start;
+    color: var(--cream-70);
+    transition: color var(--dur-fast);
+  }
+
+  .footer__links a:hover {
+    color: var(--cream);
+  }
+
+  .footer__links .icon {
+    margin-top: 2px;
+  }
+
+  .footer__bottom {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+    margin-top: var(--space-8);
+    padding-top: var(--space-5);
+    border-top: 1px solid var(--cream-15);
+    font-size: var(--fs-0);
+    color: var(--cream-70);
+  }
+
+  .footer__bottom a:hover {
+    color: var(--cream);
+  }
+
+  @media (max-width: 1024px) {
+    .footer__top {
+      grid-template-columns: 1fr 1fr;
+    }
+    .footer__brand {
+      grid-column: 1 / -1;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .footer__top {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

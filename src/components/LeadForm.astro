@@ -1,0 +1,378 @@
+---
+import Icon from './Icon.astro';
+import { site, contactLinks } from '@/content/ru/site';
+
+interface Props {
+  id?: string;
+  title?: string;
+  text?: string;
+  /** какие услуги отметить сразу (значения чекбоксов) */
+  preselect?: string[];
+  /** тема письма / контекст заявки */
+  context?: string;
+  compact?: boolean;
+}
+
+const {
+  id = 'form',
+  title = 'Расскажите, что вам необходимо — мы организуем решение',
+  text = 'Достаточно нескольких строк. Координатор свяжется с вами, уточнит детали и пришлёт предложение со стоимостью.',
+  preselect = [],
+  context = 'Заявка с сайта',
+  compact = false,
+} = Astro.props;
+
+const serviceOptions = [
+  'Отель',
+  'Трансфер',
+  'Виза / приглашение',
+  'Доставка',
+  'Грузчики',
+  'Транспортировка оборудования',
+  'Сопровождение делегации',
+  'Другое',
+];
+---
+
+<section class:list={['section', 'lead-form', compact && 'section--tight']} id={id} aria-labelledby={`${id}-title`}>
+  <div class="container lead-form__inner">
+    <div class="lead-form__aside">
+      <h2 id={`${id}-title`}>{title}</h2>
+      <p class="lead">{text}</p>
+      <ul class="lead-form__promises">
+        <li><Icon name="clock" size={20} />{site.responseTime}</li>
+        <li><Icon name="languages" size={20} />Общаемся на русском, английском и казахском</li>
+        <li><Icon name="shield-check" size={20} />Данные заявки не передаём третьим лицам</li>
+      </ul>
+      <div class="lead-form__direct">
+        <p>Удобнее в мессенджере?</p>
+        <div class="btn-row">
+          <a class="btn btn--ghost btn--sm" href={contactLinks.whatsapp()} target="_blank" rel="noopener">
+            <Icon name="message-circle" />WhatsApp
+          </a>
+          <a class="btn btn--ghost btn--sm" href={contactLinks.telegram()} target="_blank" rel="noopener">
+            <Icon name="send" />Telegram
+          </a>
+          <a class="btn btn--ghost btn--sm" href={site.phoneHref}>
+            <Icon name="phone" />{site.phone}
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <form
+      class="form"
+      method="post"
+      action={contactLinks.whatsapp()}
+      novalidate
+      data-access-key={site.formAccessKey}
+      data-whatsapp={site.whatsapp}
+      data-context={context}
+      data-lead-form
+    >
+      <div class="form__grid">
+        <div class="field">
+          <label for={`${id}-name`}>Имя</label>
+          <input class="input" id={`${id}-name`} name="Имя" type="text" autocomplete="name" required />
+        </div>
+        <div class="field">
+          <label for={`${id}-company`}>Компания</label>
+          <input class="input" id={`${id}-company`} name="Компания" type="text" autocomplete="organization" />
+        </div>
+        <div class="field">
+          <label for={`${id}-country`}>Страна</label>
+          <input class="input" id={`${id}-country`} name="Страна" type="text" autocomplete="country-name" />
+        </div>
+        <div class="field">
+          <label for={`${id}-event`}>Мероприятие</label>
+          <input class="input" id={`${id}-event`} name="Мероприятие" type="text" placeholder="Например, KMF 2027" />
+        </div>
+        <div class="field">
+          <label for={`${id}-date`}>Дата приезда</label>
+          <input class="input" id={`${id}-date`} name="Дата приезда" type="date" />
+        </div>
+        <div class="field">
+          <label for={`${id}-people`}>Количество человек</label>
+          <input class="input" id={`${id}-people`} name="Количество человек" type="number" min="1" inputmode="numeric" />
+        </div>
+      </div>
+
+      <fieldset class="field form__services">
+        <legend>Какая услуга нужна?</legend>
+        <div class="form__checks">
+          {
+            serviceOptions.map((opt) => (
+              <label class="checkbox">
+                <input type="checkbox" name="Услуги" value={opt} checked={preselect.includes(opt)} />
+                <span>{opt}</span>
+              </label>
+            ))
+          }
+        </div>
+      </fieldset>
+
+      <div class="field">
+        <label for={`${id}-comment`}>Комментарий</label>
+        <textarea class="textarea" id={`${id}-comment`} name="Комментарий" rows="4" placeholder="Сроки, состав группы, особые пожелания. Файлы (список участников, ТЗ на груз) можно прислать в WhatsApp после заявки."></textarea>
+      </div>
+
+      <div class="form__grid">
+        <div class="field">
+          <label for={`${id}-contact`}>WhatsApp / Telegram / телефон</label>
+          <input class="input" id={`${id}-contact`} name="Контакт" type="text" autocomplete="tel" required />
+          <span class="hint">Куда координатору ответить</span>
+        </div>
+        <div class="field">
+          <label for={`${id}-email`}>Email <span class="muted">(необязательно)</span></label>
+          <input class="input" id={`${id}-email`} name="Email" type="email" autocomplete="email" />
+        </div>
+      </div>
+
+      <!-- защита от ботов -->
+      <input type="text" name="website" tabindex="-1" autocomplete="off" class="visually-hidden" aria-hidden="true" />
+
+      <p class="field-error form__error" hidden role="alert"></p>
+
+      <div class="form__actions">
+        <button class="btn btn--primary btn--lg" type="submit">Отправить запрос</button>
+        <p class="form__consent">Нажимая кнопку, вы соглашаетесь на обработку указанных контактных данных для ответа на запрос.</p>
+      </div>
+
+      <div class="form__success" hidden role="status">
+        <Icon name="check" size={28} />
+        <div>
+          <p class="form__success-title">Запрос отправлен</p>
+          <p class="form__success-text"></p>
+        </div>
+      </div>
+    </form>
+  </div>
+</section>
+
+<script>
+  const forms = document.querySelectorAll<HTMLFormElement>('form[data-lead-form]');
+
+  forms.forEach((form) => {
+    const accessKey = form.dataset.accessKey || '';
+    const whatsapp = form.dataset.whatsapp || '';
+    const context = form.dataset.context || 'Заявка с сайта';
+    const errorBox = form.querySelector<HTMLElement>('.form__error')!;
+    const success = form.querySelector<HTMLElement>('.form__success')!;
+    const successText = form.querySelector<HTMLElement>('.form__success-text')!;
+    const submit = form.querySelector<HTMLButtonElement>('button[type=submit]')!;
+
+    const showError = (msg: string) => {
+      errorBox.textContent = msg;
+      errorBox.hidden = false;
+    };
+
+    const collect = () => {
+      const fd = new FormData(form);
+      const lines: string[] = [];
+      const services = fd.getAll('Услуги').map(String).filter(Boolean);
+      for (const [key, value] of fd.entries()) {
+        if (key === 'Услуги' || key === 'website') continue;
+        const v = String(value).trim();
+        if (v) lines.push(`${key}: ${v}`);
+      }
+      if (services.length) lines.splice(1, 0, `Услуги: ${services.join(', ')}`);
+      return { lines, services, fd };
+    };
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorBox.hidden = true;
+
+      const honeypot = form.querySelector<HTMLInputElement>('input[name=website]');
+      if (honeypot?.value) return;
+
+      const name = form.querySelector<HTMLInputElement>('input[name=Имя]')!;
+      const contact = form.querySelector<HTMLInputElement>('input[name=Контакт]')!;
+      let ok = true;
+      for (const field of [name, contact]) {
+        const empty = !field.value.trim();
+        field.setAttribute('aria-invalid', String(empty));
+        if (empty) ok = false;
+      }
+      if (!ok) {
+        showError('Заполните имя и контакт для ответа — без них координатор не сможет с вами связаться.');
+        (name.value.trim() ? contact : name).focus();
+        return;
+      }
+
+      const { lines, services, fd } = collect();
+      const message = `${context}\n${lines.join('\n')}`;
+
+      if (accessKey) {
+        submit.disabled = true;
+        submit.textContent = 'Отправляем…';
+        try {
+          const payload: Record<string, string> = {
+            access_key: accessKey,
+            subject: `${context}: ${name.value.trim()}`,
+            from_name: 'Сайт ADL Event Services',
+          };
+          for (const [key, value] of fd.entries()) {
+            if (key === 'website') continue;
+            if (key === 'Услуги') continue;
+            payload[key] = String(value);
+          }
+          payload['Услуги'] = services.join(', ');
+          const res = await fetch('https://api.web3forms.com/submit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          const json = await res.json();
+          if (!json.success) throw new Error(json.message || 'send failed');
+          successText.textContent = 'Координатор ответит в течение 30 минут в рабочее время на указанный контакт.';
+          success.hidden = false;
+          form.reset();
+        } catch {
+          showError('Не удалось отправить форму. Напишите нам в WhatsApp или Telegram, кнопки слева.');
+        } finally {
+          submit.disabled = false;
+          submit.textContent = 'Отправить запрос';
+        }
+        return;
+      }
+
+      // Без ключа почтового сервиса: открываем WhatsApp с готовым текстом заявки
+      const link = `https://wa.me/${whatsapp}?text=${encodeURIComponent(message)}`;
+      window.open(link, '_blank', 'noopener');
+      successText.textContent =
+        'Мы открыли WhatsApp с готовым текстом заявки. Если окно не появилось, разрешите всплывающие окна или напишите нам напрямую.';
+      success.hidden = false;
+    });
+  });
+</script>
+
+<style>
+  .lead-form {
+    background: var(--paper-2);
+  }
+
+  .lead-form__inner {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: var(--space-8);
+    align-items: start;
+  }
+
+  .lead-form__aside {
+    display: grid;
+    gap: var(--space-5);
+    position: sticky;
+    top: calc(var(--header-h) + 24px);
+  }
+
+  .lead-form__promises {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .lead-form__promises li {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    color: var(--ink-2);
+  }
+
+  .lead-form__promises .icon {
+    color: var(--accent);
+    margin-top: 2px;
+  }
+
+  .lead-form__direct {
+    display: grid;
+    gap: var(--space-3);
+    padding-top: var(--space-5);
+    border-top: 1px solid var(--line);
+  }
+
+  .lead-form__direct p {
+    font-weight: 500;
+  }
+
+  .form {
+    display: grid;
+    gap: var(--space-5);
+    padding: var(--space-6);
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+  }
+
+  .form__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+  }
+
+  .form__services {
+    border: 0;
+    padding: 0;
+    margin: 0;
+  }
+
+  .form__services legend {
+    font-weight: 500;
+    font-size: var(--fs-0);
+    padding: 0;
+    margin-bottom: 8px;
+  }
+
+  .form__checks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .form__actions {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .form__consent {
+    font-size: 0.8rem;
+    color: var(--ink-3);
+    max-width: 48ch;
+  }
+
+  .form__success[hidden],
+  .form__error[hidden] {
+    display: none;
+  }
+
+  .form__success {
+    display: flex;
+    gap: var(--space-4);
+    padding: var(--space-5);
+    border-radius: var(--radius);
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+  }
+
+  .form__success-title {
+    font-weight: 600;
+  }
+
+  @media (max-width: 900px) {
+    .lead-form__inner {
+      grid-template-columns: 1fr;
+      gap: var(--space-6);
+    }
+    .lead-form__aside {
+      position: static;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .form__grid {
+      grid-template-columns: 1fr;
+    }
+    .form {
+      padding: var(--space-5);
+    }
+  }
+</style>

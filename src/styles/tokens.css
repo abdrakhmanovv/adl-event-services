@@ -1,0 +1,93 @@
+/* Дизайн-токены ADL Event Services.
+   Внутренние страницы — светлые и спокойные, главная — тёмная кинематографичная.
+   Один акцент: глубокий бирюзовый (отсылка к цвету флага Казахстана). */
+
+:root {
+  /* Цвет: светлая тема (внутренние страницы) */
+  --ink: #15181c;
+  --ink-2: #3b4249;
+  --ink-3: #6e767e;
+  --paper: #ffffff;
+  --paper-2: #f3f5f6;
+  --paper-3: #e9edef;
+  --line: #d9dfe3;
+  --line-strong: #b9c2c8;
+
+  /* Акцент — тёмно-синий из логотипа ADL; золото только для знака и редких деталей */
+  --accent: #1f2e55;
+  --accent-strong: #16223f;
+  --accent-soft: #e9edf6;
+  --accent-ink: #14203d;
+  --gold: #b8923a;
+  --gold-strong: #8f6f27;
+  --gold-soft: #f5efe0;
+
+  /* Цвет: ночная тема (главная, сцены) */
+  --night: #0f0c0a;
+  --night-2: #241c16;
+  --night-3: #3b2f26;
+  --cream: #f4efe7;
+  --cream-70: rgba(244, 239, 231, 0.72);
+  --cream-40: rgba(244, 239, 231, 0.4);
+  --cream-15: rgba(244, 239, 231, 0.15);
+
+  --danger: #b42318;
+  --success: #1d7a4a;
+
+  /* Типографика */
+  --font-display: 'Unbounded', 'Golos Text', system-ui, sans-serif;
+  --font-text: 'Golos Text', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --fs-0: 0.875rem;
+  --fs-1: 1rem;
+  --fs-2: 1.125rem;
+  --fs-3: clamp(1.2rem, 1.05rem + 0.6vw, 1.45rem);
+  --fs-h3: clamp(1.25rem, 1.05rem + 0.9vw, 1.7rem);
+  --fs-h2: clamp(1.7rem, 1.25rem + 1.9vw, 2.6rem);
+  --fs-h1: clamp(2rem, 1.35rem + 2.8vw, 3.5rem);
+  --fs-hero: clamp(2rem, 1rem + 4.4vw, 5.2rem);
+
+  --lh-text: 1.55;
+  --lh-tight: 1.08;
+  --lh-heading: 1.18;
+  --tracking-display: -0.015em;
+
+  /* Ритм и сетка */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+  --space-10: 128px;
+
+  --container: 1200px;
+  --container-narrow: 760px;
+  --gutter: clamp(20px, 4vw, 48px);
+  --section-y: clamp(56px, 4vw + 32px, 112px);
+  --header-h: 72px;
+
+  --radius: 6px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+
+  --shadow-1: 0 1px 2px rgba(21, 24, 28, 0.06), 0 8px 24px rgba(21, 24, 28, 0.06);
+  --shadow-2: 0 2px 6px rgba(21, 24, 28, 0.08), 0 16px 40px rgba(21, 24, 28, 0.12);
+
+  /* Движение */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-snap: cubic-bezier(0.7, 0, 0.2, 1);
+  --dur-fast: 160ms;
+  --dur: 260ms;
+  --dur-slow: 480ms;
+}
+
+@media (max-width: 720px) {
+  :root {
+    --header-h: 64px;
+  }
+}

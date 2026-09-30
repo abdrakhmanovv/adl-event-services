@@ -1,0 +1,62 @@
+---
+import Icon from './Icon.astro';
+import { contactLinks } from '@/content/ru/site';
+---
+
+<a
+  class="floating"
+  href={contactLinks.whatsapp('Здравствуйте! Хочу уточнить по услугам ADL Event Services.')}
+  target="_blank"
+  rel="noopener"
+  aria-label="Написать в WhatsApp"
+>
+  <Icon name="message-circle" size={22} />
+  <span>WhatsApp</span>
+</a>
+
+<style>
+  .floating {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    z-index: 90;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 48px;
+    padding: 0 18px 0 14px;
+    border-radius: var(--radius-pill);
+    background: var(--accent);
+    color: #fff;
+    font-weight: 500;
+    box-shadow: var(--shadow-2);
+    transition:
+      transform var(--dur-fast) var(--ease-out),
+      background var(--dur-fast);
+  }
+
+  .floating:hover {
+    background: var(--accent-strong);
+    transform: translateY(-2px);
+  }
+
+  @media (max-width: 640px) {
+    .floating span {
+      display: none;
+    }
+    .floating {
+      width: 52px;
+      height: 52px;
+      padding: 0;
+      justify-content: center;
+      right: 16px;
+      bottom: 16px;
+    }
+  }
+
+  @media print {
+    .floating {
+      display: none;
+    }
+  }
+</style>

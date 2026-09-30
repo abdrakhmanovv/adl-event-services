@@ -1,0 +1,96 @@
+{
+  "style": "Cinematic still frame, 16:9, photographic realism, 35mm lens, warm muted colour grade with deep soft shadows, natural light, shallow depth of field, premium business-travel atmosphere, Astana Kazakhstan, tidy modern interiors, no text, no logos, no watermarks, no captions",
+  "negative": "text, letters, logo, watermark, caption, cartoon, illustration, painting, distorted face, extra fingers, extra limbs, blurry, low quality, oversaturated",
+  "character": "a well-dressed business traveller in a dark navy suit, 40s, short dark hair, calm confident expression",
+  "scenes": [
+    {
+      "id": "window",
+      "keyframe": "Interior of a modern airliner business cabin, an oval aircraft window centred in the frame with its white shutter fully OPEN, bright blue sky and soft white clouds visible outside, the cabin wall around the window in warm shadow, left third of the frame is dark cabin wall, nobody in frame",
+      "extraKeyframes": {
+        "closed": "Interior of a modern airliner business cabin, an oval aircraft window centred in the frame with its white plastic shutter fully CLOSED, only a thin line of light at the bottom edge of the shutter, the cabin wall around the window in warm shadow, left third of the frame is dark cabin wall, nobody in frame"
+      },
+      "intro": {
+        "from": "closed",
+        "to": "keyframe",
+        "duration": 3,
+        "prompt": "The white aircraft window shutter slides upward smoothly and reveals bright blue sky with soft clouds outside; light spills into the cabin; camera perfectly static; nothing else moves"
+      },
+      "loop": {
+        "duration": 5,
+        "prompt": "Clouds drift very slowly past the aircraft window, gentle light shimmer on the cabin wall, camera perfectly static, subtle ambient motion only"
+      },
+      "transition": {
+        "duration": 4,
+        "prompt": "The camera rushes forward straight through the aircraft window into the bright sky, the white light resolves into a bright modern airport arrivals hall where a greeter holds a small welcome sign; one continuous fast camera move, no cuts, no fade to black"
+      }
+    },
+    {
+      "id": "airport",
+      "keyframe": "Bright modern international airport arrivals hall in Astana, glass walls and morning light, a smartly dressed greeter in a dark suit holding a small blank white welcome sign, {character} walking toward the camera with a rolling suitcase, blurred travellers in the background, wide shot",
+      "loop": {
+        "duration": 5,
+        "prompt": "People walk softly in the blurred background, the greeter lowers the sign slightly and smiles, the traveller takes one slow step forward, camera perfectly static, subtle ambient motion"
+      },
+      "transition": {
+        "duration": 4,
+        "prompt": "Fast crash zoom onto the handle of the rolling suitcase, whip pan to the right, motion blur, the image resolves outside the terminal where a black premium sedan waits with its rear door open and a driver in a dark suit holding the door; one continuous fast camera move, no cuts"
+      }
+    },
+    {
+      "id": "transfer",
+      "keyframe": "Outside the airport terminal in Astana, morning light, a black premium sedan with its rear door held open by a driver in a dark suit, {character} about to step into the car, glass terminal facade softly blurred in the background, medium wide shot",
+      "loop": {
+        "duration": 5,
+        "prompt": "The traveller settles into the rear seat, the driver keeps holding the door, light reflections move slowly on the car paint, camera perfectly static, subtle ambient motion"
+      },
+      "transition": {
+        "duration": 4,
+        "prompt": "The car door swings closed toward the camera filling the frame with the dark glossy door, the camera slides along the dark surface and around a corner, and the darkness opens into an elegant warm hotel reception lobby; one continuous camera move, no cuts"
+      }
+    },
+    {
+      "id": "hotel",
+      "keyframe": "Elegant hotel reception in Astana, warm wood and stone, soft golden lamps, a receptionist in uniform handing a white key card across the desk to {character}, rolling suitcase beside him, medium shot, calm luxury",
+      "loop": {
+        "duration": 5,
+        "prompt": "The receptionist hands over the key card with a small nod, warm lamp light flickers gently, the traveller reaches for the card, camera perfectly static, subtle ambient motion"
+      },
+      "transition": {
+        "duration": 4,
+        "prompt": "Fast zoom onto the white key card in the hand, the camera pulls up and out through a large hotel window over the Astana skyline toward the giant glass sphere of the EXPO Nur Alem pavilion, then pushes inside into a bright exhibition hall with modern stands; one continuous fast camera move, no cuts"
+      }
+    },
+    {
+      "id": "expo",
+      "keyframe": "Bright modern exhibition hall at EXPO Astana, industrial machinery stands and clean white booths, two workers in dark uniforms moving wooden crates on a trolley toward a stand, {character} checking a tablet nearby, wide shot, daylight from high windows",
+      "loop": {
+        "duration": 5,
+        "prompt": "Workers push the trolley slowly forward, visitors walk softly in the far background, stand lights glow gently, camera perfectly static, subtle ambient motion"
+      },
+      "transition": {
+        "duration": 4,
+        "prompt": "Whip pan to the left across the exhibition hall, strong motion blur, the light turns warm and golden and the image resolves on an evening restaurant terrace in Astana with the Bayterek tower and city lights in the distance; one continuous fast camera move, no cuts"
+      }
+    },
+    {
+      "id": "evening",
+      "keyframe": "Evening in Astana, business dinner on a restaurant terrace with the illuminated Bayterek tower and city lights softly blurred in the distance, {character} and two colleagues at a table with candles and glasses, warm golden ambient light, medium wide shot",
+      "loop": {
+        "duration": 5,
+        "prompt": "Candle flames flicker, city lights twinkle in the distance, the guests talk and one raises a glass slowly, camera perfectly static, subtle ambient motion"
+      },
+      "transition": {
+        "duration": 4,
+        "prompt": "The camera cranes up from the dinner table over the night skyline of Astana, glides across the city lights, and tilts down to an airport departures curb at night where a black sedan pulls up and an airliner takes off in the background; one continuous camera move, no cuts"
+      }
+    },
+    {
+      "id": "departure",
+      "keyframe": "Night at Astana airport departures curb, a black premium sedan stopped at the kerb with its trunk open, {character} with a rolling suitcase looking up at an airliner taking off with its lights glowing in the deep blue night sky, terminal lights glowing warm, wide cinematic shot",
+      "loop": {
+        "duration": 5,
+        "prompt": "The airliner climbs slowly across the night sky, its lights blink, terminal lights glow, the traveller stands still watching, camera perfectly static, subtle ambient motion"
+      }
+    }
+  ]
+}

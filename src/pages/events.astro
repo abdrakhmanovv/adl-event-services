@@ -1,0 +1,162 @@
+---
+import Base from '@/layouts/Base.astro';
+import Icon from '@/components/Icon.astro';
+import LeadForm from '@/components/LeadForm.astro';
+import CTABand from '@/components/CTABand.astro';
+import { url } from '@/lib/url';
+
+const events = [
+  {
+    name: 'Kazakhstan Machinery Fair 2027',
+    dates: '31 марта — 2 апреля 2027',
+    venue: 'МВЦ EXPO, Астана',
+    status: 'Принимаем заявки',
+    text: 'Международная выставка машиностроения, металлообработки и промышленных технологий. Крупнейшее отраслевое событие Казахстана: экспоненты и делегации из десятков стран.',
+    offer: [
+      'приглашения и визовая поддержка для сотрудников',
+      'гостиничные блоки рядом с EXPO',
+      'трансферы аэропорт — отель — площадка по расписанию',
+      'доставка оборудования и образцов на стенд',
+      'погрузка, разгрузка и вывоз после закрытия',
+      'координатор на связи все три дня',
+    ],
+  },
+  {
+    name: 'Space Days',
+    dates: 'Даты уточняются',
+    venue: 'Астана',
+    status: 'Предварительные заявки',
+    text: 'Отраслевое мероприятие космической индустрии Казахстана. Работаем с участниками и делегациями по тому же сценарию: приезд, размещение, транспорт, логистика.',
+    offer: ['размещение и трансферы', 'визовая поддержка', 'сопровождение делегаций', 'доставка материалов'],
+  },
+];
+---
+
+<Base title="Мероприятия" description="Мероприятия в Астане, на которых ADL Event Services сопровождает участников, экспонентов и делегации: KMF 2027, Space Days и другие.">
+  <section class="hero">
+    <div class="container hero__inner">
+      <h1>Мероприятия</h1>
+      <p class="lead">
+        Работаем на выставках, форумах и конгрессах в Астане. Ниже те, к которым уже готовимся. Если вашего мероприятия нет в списке, напишите: сценарий работы одинаковый.
+      </p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container events">
+      {
+        events.map((ev) => (
+          <article class="event">
+            <div class="event__meta">
+              <span class="event__status">{ev.status}</span>
+              <p class="event__dates"><Icon name="calendar" size={18} />{ev.dates}</p>
+              <p class="event__venue"><Icon name="map-pin" size={18} />{ev.venue}</p>
+            </div>
+            <div class="event__body">
+              <h2>{ev.name}</h2>
+              <p class="event__text">{ev.text}</p>
+              <p class="event__offer-title">Что организуем для участников</p>
+              <ul class="check-list">
+                {ev.offer.map((o) => (
+                  <li>
+                    <Icon name="check" />
+                    <span>{o}</span>
+                  </li>
+                ))}
+              </ul>
+              <div class="btn-row">
+                <a class="btn btn--primary" href="#form">Получить помощь участнику</a>
+                <a class="btn btn--ghost" href={url('/for-exhibitors')}>Сервис для экспонентов</a>
+              </div>
+            </div>
+          </article>
+        ))
+      }
+    </div>
+  </section>
+
+  <CTABand
+    title="Ваше мероприятие не в списке?"
+    text="Форум, конгресс, конференция или визит делегации. Напишите, где и когда, и координатор предложит план."
+  />
+
+  <LeadForm id="form" context="Заявка: мероприятие" title="Заявка участника мероприятия" />
+</Base>
+
+<style>
+  .hero {
+    padding-block: var(--space-8);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .hero__inner {
+    display: grid;
+    gap: var(--space-4);
+    max-width: 52rem;
+  }
+
+  .events {
+    display: grid;
+    gap: var(--space-6);
+  }
+
+  .event {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2.4fr);
+    gap: var(--space-7);
+    padding: var(--space-7);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+  }
+
+  .event__meta {
+    display: grid;
+    gap: var(--space-3);
+    align-content: start;
+  }
+
+  .event__status {
+    width: fit-content;
+    padding: 6px 12px;
+    border-radius: var(--radius-pill);
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    font-size: var(--fs-0);
+    font-weight: 500;
+  }
+
+  .event__dates,
+  .event__venue {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    color: var(--ink-2);
+  }
+
+  .event__body {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .event__text {
+    color: var(--ink-2);
+    max-width: 60ch;
+  }
+
+  .event__offer-title {
+    font-weight: 500;
+    margin-top: var(--space-2);
+  }
+
+  .event .btn-row {
+    margin-top: var(--space-3);
+  }
+
+  @media (max-width: 800px) {
+    .event {
+      grid-template-columns: 1fr;
+      gap: var(--space-5);
+      padding: var(--space-5);
+    }
+  }
+</style>

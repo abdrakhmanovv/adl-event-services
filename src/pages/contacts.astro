@@ -1,0 +1,103 @@
+---
+import Base from '@/layouts/Base.astro';
+import Icon from '@/components/Icon.astro';
+import LeadForm from '@/components/LeadForm.astro';
+import { site, contactLinks } from '@/content/ru/site';
+
+const cards = [
+  { icon: 'phone', label: 'Телефон', value: site.phone, href: site.phoneHref },
+  { icon: 'mail', label: 'Email', value: site.email, href: contactLinks.mail() },
+  { icon: 'message-circle', label: 'WhatsApp', value: 'Написать в WhatsApp', href: contactLinks.whatsapp(), external: true },
+  { icon: 'send', label: 'Telegram', value: `@${site.telegram}`, href: contactLinks.telegram(), external: true },
+  { icon: 'map-pin', label: 'Офис', value: site.address },
+  { icon: 'clock', label: 'Часы работы', value: site.hours },
+];
+---
+
+<Base title="Контакты" description={`Контакты ADL Event Services в Астане: телефон, email, WhatsApp, Telegram и форма заявки. ${site.responseTime}.`}>
+  <section class="hero">
+    <div class="container hero__inner">
+      <h1>Контакты</h1>
+      <p class="lead">{site.responseTime}. Пишите в удобный мессенджер или заполните форму ниже.</p>
+    </div>
+  </section>
+
+  <section class="section section--tight">
+    <div class="container">
+      <div class="grid grid--3">
+        {
+          cards.map((c) =>
+            c.href ? (
+              <a class="card contact" href={c.href} target={c.external ? '_blank' : undefined} rel={c.external ? 'noopener' : undefined}>
+                <Icon name={c.icon} size={26} />
+                <span class="contact__label">{c.label}</span>
+                <span class="contact__value">{c.value}</span>
+              </a>
+            ) : (
+              <div class="card contact">
+                <Icon name={c.icon} size={26} />
+                <span class="contact__label">{c.label}</span>
+                <span class="contact__value">{c.value}</span>
+              </div>
+            ),
+          )
+        }
+      </div>
+    </div>
+  </section>
+
+  <LeadForm id="form" context="Заявка со страницы контактов" />
+
+  {
+    site.mapEmbedUrl && (
+      <section class="map" aria-label="Карта">
+        <iframe src={site.mapEmbedUrl} title="Где нас найти" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade" />
+      </section>
+    )
+  }
+</Base>
+
+<style>
+  .hero {
+    padding-block: var(--space-8);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .hero__inner {
+    display: grid;
+    gap: var(--space-4);
+    max-width: 52rem;
+  }
+
+  .contact {
+    display: grid;
+    gap: 6px;
+    align-content: start;
+    transition: border-color var(--dur-fast);
+  }
+
+  a.contact:hover {
+    border-color: var(--ink);
+  }
+
+  .contact .icon {
+    color: var(--accent);
+    margin-bottom: var(--space-2);
+  }
+
+  .contact__label {
+    font-size: var(--fs-0);
+    color: var(--ink-3);
+  }
+
+  .contact__value {
+    font-weight: 500;
+  }
+
+  .map iframe {
+    display: block;
+    width: 100%;
+    height: 420px;
+    border: 0;
+  }
+</style>

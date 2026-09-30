@@ -1,0 +1,597 @@
+---
+import Base from '@/layouts/Base.astro';
+import Icon from '@/components/Icon.astro';
+import ServiceCard from '@/components/ServiceCard.astro';
+import Steps from '@/components/Steps.astro';
+import FAQ from '@/components/FAQ.astro';
+import CTABand from '@/components/CTABand.astro';
+import LeadForm from '@/components/LeadForm.astro';
+import { site, upcomingEvent } from '@/content/ru/site';
+import { services } from '@/content/ru/services';
+import { scenes, audiences, whyItems, homeFaq } from '@/content/ru/home';
+import { url, asset } from '@/lib/url';
+
+const media = (id: string, file: string) => asset(`/media/scenes/${id}/${file}`);
+---
+
+<Base title={site.name} theme="night" bodyClass="page-home" floating={false}>
+  <section class="scenes" id="scenes" data-scenes aria-roledescription="слайды" aria-label="Путь гостя">
+    <div class="scenes__stage">
+      {
+        scenes.map((s, i) => (
+          <article
+            class:list={['scene', i === 0 && 'is-active']}
+            data-scene={s.id}
+            data-index={i}
+            aria-hidden={i !== 0 ? 'true' : undefined}
+            style={`--scene-hue: ${i * 37}`}
+          >
+            <div class="scene__media">
+              <img class="scene__poster" src={media(s.media, 'poster.webp')} alt="" decoding="async" loading={i === 0 ? 'eager' : 'lazy'} />
+              {i === 0 && (
+                <>
+                  <img class="scene__intro-poster" src={media(s.media, 'intro-poster.webp')} alt="" decoding="async" />
+                  <video class="scene__intro" muted playsinline preload="auto" aria-hidden="true">
+                    <source src={media(s.media, 'intro.mp4')} type="video/mp4" />
+                  </video>
+                </>
+              )}
+              <video class="scene__loop" muted loop playsinline preload={i === 0 ? 'auto' : 'none'} aria-hidden="true">
+                <source src={media(s.media, 'loop.mp4')} type="video/mp4" />
+              </video>
+              {i < scenes.length - 1 && (
+                <video class="scene__transition" muted playsinline preload="none" aria-hidden="true">
+                  <source src={media(s.media, 'transition.mp4')} type="video/mp4" />
+                </video>
+              )}
+            </div>
+            <div class="scene__vignette" />
+            <div class="container scene__content">
+              <div class:list={['scene__text', i === 0 && 'scene__text--first']}>
+                {i === 0 ? <h1 class="scene__title">{s.title}</h1> : <h2 class="scene__title">{s.title}</h2>}
+                <p class="scene__lead">{s.text}</p>
+                <div class="btn-row">
+                  {s.primary && (
+                    <a class="btn btn--light" href={url(s.primary.href)}>
+                      {s.primary.label}
+                    </a>
+                  )}
+                  <a class="btn btn--outline-light" href={url(s.link.href)}>
+                    {s.link.label}
+                    <Icon name="arrow-right" size={18} />
+                  </a>
+                </div>
+              </div>
+            </div>
+          </article>
+        ))
+      }
+    </div>
+
+    <nav class="scenes__nav" aria-label="Эпизоды">
+      <ol>
+        {
+          scenes.map((s, i) => (
+            <li>
+              <button type="button" data-goto={i} aria-label={`${i + 1}. ${s.label}`} aria-current={i === 0 ? 'step' : undefined}>
+                <span class="scenes__dot" />
+                <span class="scenes__dot-label">{s.label}</span>
+              </button>
+            </li>
+          ))
+        }
+      </ol>
+    </nav>
+
+    <div class="scenes__footer">
+      <button type="button" class="scenes__hint" data-next>
+        <Icon name="arrow-down" size={18} />
+        <span>Листайте, чтобы пройти путь гостя</span>
+      </button>
+      <span class="scenes__counter" aria-live="polite">
+        <span data-counter-current>1</span> / {scenes.length}
+      </span>
+    </div>
+  </section>
+
+  <div class="after-scenes" id="content">
+    <section class="section intro-section">
+      <div class="container">
+        <div class="intro-grid">
+          <div>
+            <h2>Всё необходимое для участия в мероприятии — в одном месте</h2>
+          </div>
+          <div class="intro-grid__text">
+            <p class="lead">
+              Мы помогаем участникам и организаторам решать практические вопросы, связанные с приездом, размещением, транспортом, документами, грузами и организацией пребывания в Казахстане.
+            </p>
+            <p class="lead">
+              Вы обращаетесь к одному координатору, а мы организуем услугу сами или подключаем профильного подрядчика.
+            </p>
+          </div>
+        </div>
+        <div class="grid grid--4 services-grid">
+          {services.map((s) => <ServiceCard service={s} />)}
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--alt">
+      <div class="container">
+        <div class="section-head">
+          <h2>Для кого</h2>
+          <p class="lead">Одинаково внимательно работаем с командой из трёх человек и с делегацией из тридцати.</p>
+        </div>
+        <ul class="audiences">
+          {
+            audiences.map((a) => (
+              <li class="audience">
+                <h3>{a.title}</h3>
+                <p>{a.text}</p>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+    </section>
+
+    <section class="section event-band">
+      <div class="container event-band__inner">
+        <div class="event-band__meta">
+          <p class="event-band__label">Ближайшее мероприятие</p>
+          <h2>{upcomingEvent.name}</h2>
+          <p class="event-band__details">
+            <span><Icon name="calendar" size={18} />{upcomingEvent.dates}</span>
+            <span><Icon name="map-pin" size={18} />{upcomingEvent.venue}</span>
+          </p>
+        </div>
+        <div class="event-band__cta">
+          <p>Готовим экспонентов и делегации: визы, гостиничные блоки, трансферы, доставка на стенд, погрузочные работы.</p>
+          <div class="btn-row">
+            <a class="btn btn--light" href={url(upcomingEvent.href)}>Получить помощь участнику</a>
+            <a class="btn btn--outline-light" href={url('/for-exhibitors')}>Сервис для экспонентов</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <div class="section-head">
+          <h2>Почему ADL</h2>
+        </div>
+        <div class="grid grid--3">
+          {
+            whyItems.map((w) => (
+              <div class="why">
+                <Icon name={w.icon} size={26} class="why__icon" />
+                <h3>{w.title}</h3>
+                <p>{w.text}</p>
+              </div>
+            ))
+          }
+        </div>
+      </div>
+    </section>
+
+    <Steps />
+
+    <FAQ items={homeFaq} id="faq" />
+
+    <CTABand />
+
+    <LeadForm id="form" context="Заявка с главной страницы" />
+  </div>
+
+  <script>
+    import '../scripts/scenes';
+  </script>
+</Base>
+
+<style>
+  /* ---------- Стек сцен ---------- */
+  .scenes {
+    position: relative;
+    height: 100svh;
+    min-height: 600px;
+    background: var(--night);
+    color: var(--cream);
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  .scenes__stage {
+    position: absolute;
+    inset: 0;
+  }
+
+  .scene {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    visibility: hidden;
+    /* запасной фон, пока не загрузилось медиа */
+    background:
+      radial-gradient(60% 70% at 50% 45%, hsl(var(--scene-hue) 18% 28%) 0%, transparent 70%),
+      var(--night);
+  }
+
+  .scene.is-active {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .scene__media {
+    position: absolute;
+    inset: 0;
+  }
+
+  .scene__media > img,
+  .scene__media > video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .scene__poster {
+    z-index: 0;
+  }
+
+  .scene__loop {
+    z-index: 1;
+    opacity: 0;
+  }
+
+  .scene__loop.is-visible {
+    opacity: 1;
+  }
+
+  .scene__intro-poster {
+    z-index: 2;
+  }
+
+  .scene__intro {
+    z-index: 3;
+    opacity: 0;
+  }
+
+  .scene__intro.is-visible {
+    opacity: 1;
+  }
+
+  .scene__intro-poster.is-hidden,
+  .scene__intro.is-hidden {
+    display: none;
+  }
+
+  .scene__transition {
+    z-index: 4;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .scene__transition.is-playing {
+    opacity: 1;
+  }
+
+  .scene__vignette {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+    background:
+      linear-gradient(to top, rgba(15, 12, 10, 0.82) 0%, rgba(15, 12, 10, 0.25) 45%, rgba(15, 12, 10, 0.1) 70%, rgba(15, 12, 10, 0.45) 100%),
+      linear-gradient(to right, rgba(15, 12, 10, 0.55) 0%, rgba(15, 12, 10, 0) 55%);
+  }
+
+  .scene__content {
+    position: relative;
+    z-index: 6;
+    height: 100%;
+    display: flex;
+    align-items: flex-end;
+    padding-bottom: clamp(88px, 12vh, 140px);
+    padding-top: var(--header-h);
+  }
+
+  .scene__text {
+    display: grid;
+    gap: var(--space-4);
+    max-width: 40rem;
+  }
+
+  .scene__text--first {
+    max-width: 52rem;
+  }
+
+  .scene__title {
+    font-size: var(--fs-h1);
+    line-height: 1.06;
+    color: #fff;
+  }
+
+  .scene__text--first .scene__title {
+    font-size: var(--fs-hero);
+    line-height: 1.02;
+  }
+
+  .scene__lead {
+    font-size: var(--fs-2);
+    color: var(--cream-70);
+    max-width: 36em;
+    text-wrap: pretty;
+  }
+
+  .scene__text .btn-row {
+    margin-top: var(--space-2);
+  }
+
+  /* навигация по сценам */
+  .scenes__nav {
+    position: absolute;
+    right: clamp(16px, 3vw, 40px);
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 7;
+  }
+
+  .scenes__nav ol {
+    display: grid;
+    gap: 6px;
+  }
+
+  .scenes__nav button {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    min-height: 32px;
+    padding: 4px;
+    color: var(--cream);
+    opacity: 0.7;
+    transition: opacity var(--dur-fast);
+  }
+
+  .scenes__nav button:hover,
+  .scenes__nav button[aria-current] {
+    opacity: 1;
+  }
+
+  .scenes__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--cream-40);
+    transition:
+      transform var(--dur) var(--ease-out),
+      background var(--dur);
+  }
+
+  .scenes__nav button[aria-current] .scenes__dot {
+    background: #fff;
+    transform: scale(1.5);
+  }
+
+  .scenes__dot-label {
+    font-size: 0.8rem;
+    opacity: 0;
+    transform: translateX(6px);
+    transition:
+      opacity var(--dur-fast),
+      transform var(--dur-fast) var(--ease-out);
+  }
+
+  .scenes__nav:hover .scenes__dot-label,
+  .scenes__nav button:focus-visible .scenes__dot-label {
+    opacity: 1;
+    transform: none;
+  }
+
+  .scenes__footer {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: clamp(20px, 4vh, 40px);
+    z-index: 7;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-inline: var(--gutter);
+    pointer-events: none;
+  }
+
+  .scenes__hint {
+    pointer-events: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--cream-70);
+    font-size: var(--fs-0);
+    transition: opacity var(--dur);
+  }
+
+  .scenes__hint .icon {
+    animation: nudge 1.6s var(--ease-in-out) infinite;
+  }
+
+  .scenes.has-moved .scenes__hint {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .scenes__counter {
+    font-family: var(--font-display);
+    font-size: 0.85rem;
+    color: var(--cream-70);
+    letter-spacing: 0.05em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  @keyframes nudge {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(4px);
+    }
+  }
+
+  @media (max-width: 768px) {
+    .scenes {
+      min-height: 100svh;
+    }
+    .scenes__nav {
+      right: auto;
+      top: auto;
+      left: var(--gutter);
+      bottom: 64px;
+      transform: none;
+    }
+    .scenes__nav ol {
+      grid-auto-flow: column;
+      gap: 2px;
+    }
+    .scenes__dot-label {
+      display: none;
+    }
+    .scene__content {
+      padding-bottom: 112px;
+    }
+    .scene__lead {
+      font-size: var(--fs-1);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .scenes__hint .icon {
+      animation: none;
+    }
+  }
+
+  /* ---------- Светлая часть главной ---------- */
+  .after-scenes {
+    position: relative;
+    z-index: 1;
+    background: var(--paper);
+    color: var(--ink);
+  }
+
+  .intro-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+    gap: var(--space-7);
+    margin-bottom: var(--space-8);
+  }
+
+  .intro-grid__text {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .audiences {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: var(--space-5);
+  }
+
+  .audience {
+    display: grid;
+    gap: var(--space-2);
+    align-content: start;
+    padding-top: var(--space-4);
+    border-top: 2px solid var(--ink);
+  }
+
+  .audience h3 {
+    font-size: 1.1rem;
+  }
+
+  .audience p {
+    color: var(--ink-2);
+    font-size: var(--fs-0);
+  }
+
+  .event-band {
+    background: var(--night-2);
+    color: var(--cream);
+  }
+
+  .event-band__inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    gap: var(--space-7);
+    align-items: end;
+  }
+
+  .event-band__label {
+    color: var(--cream-70);
+    margin-bottom: var(--space-3);
+  }
+
+  .event-band__details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-5);
+    margin-top: var(--space-4);
+    color: var(--cream-70);
+  }
+
+  .event-band__details span {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .event-band__cta {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .event-band__cta p {
+    color: var(--cream-70);
+  }
+
+  .why {
+    display: grid;
+    gap: var(--space-3);
+    align-content: start;
+    padding: var(--space-5);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+  }
+
+  .why__icon {
+    color: var(--accent);
+  }
+
+  .why h3 {
+    font-size: 1.1rem;
+  }
+
+  .why p {
+    color: var(--ink-2);
+  }
+
+  @media (max-width: 1024px) {
+    .audiences {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 800px) {
+    .intro-grid,
+    .event-band__inner {
+      grid-template-columns: 1fr;
+      gap: var(--space-5);
+    }
+  }
+
+  @media (max-width: 600px) {
+    .audiences {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+</style>
