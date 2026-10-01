@@ -2,6 +2,7 @@
   "style": "Cinematic still frame, 16:9, photographic realism, 35mm lens, warm muted colour grade with deep soft shadows, natural light, shallow depth of field, premium business-travel atmosphere, Astana Kazakhstan, tidy modern interiors, no text, no logos, no watermarks, no captions",
   "negative": "text, letters, logo, watermark, caption, cartoon, illustration, painting, distorted face, extra fingers, extra limbs, blurry, low quality, oversaturated",
   "character": "a well-dressed business traveller in a dark navy suit, 40s, short dark hair, calm confident expression",
+  "_comment": "window — сгенерированный иллюминатор (кадры keyframe/closed, intro, бесконечная петля облаков). Остальные сцены — фото пользователя: photo обрезается до 16:9 (crop.y — отступ сверху), clean — правка Qwen (убрать надписи), live — оживление один раз и стоп на последнем кадре, transition — переход от последнего кадра live к фото следующей сцены.",
   "scenes": [
     {
       "id": "window",
@@ -23,75 +24,82 @@
       },
       "transition": {
         "duration": 4,
-        "prompt": "The camera rushes forward straight through the aircraft window into the bright sky, the white light resolves into a bright modern airport arrivals hall where a greeter holds a small welcome sign; one continuous fast camera move, no cuts, no fade to black"
+        "prompt": "The camera rushes forward straight through the aircraft window into the bright white clouds, the clouds part and the camera descends through a glass roof into a bright modern airport arrivals hall, ending behind the shoulder of a man in a navy suit holding a blank white sign while business travellers with suitcases walk toward him. One continuous fast camera move, no cuts, no fade to black, no text"
       }
     },
     {
       "id": "airport",
-      "keyframe": "Bright modern international airport arrivals hall in Astana, glass walls and morning light, a smartly dressed greeter in a dark suit holding a small blank white welcome sign, {character} walking toward the camera with a rolling suitcase, blurred travellers in the background, wide shot",
-      "loop": {
+      "photo": "photo/фото анимации/встреча в аэропорту.png",
+      "crop": { "y": 180 },
+      "clean": "Keep this photo exactly as it is: the same airport hall, the same people in the same poses and places, the same camera angle, framing, lighting and colours. Only remove all text, letters, numbers and logos everywhere in the image: the red shop sign above the store becomes a plain red sign with no lettering, the posters and screens become plain with no text, the small signs show no text. The white sign held by the man in the foreground stays completely blank.",
+      "live": {
         "duration": 5,
-        "prompt": "People walk softly in the blurred background, the greeter lowers the sign slightly and smiles, the traveller takes one slow step forward, camera perfectly static, subtle ambient motion"
+        "prompt": "The four business travellers walk toward the camera pulling their suitcases and smile; the greeter in the navy suit in the foreground raises the blank white sign a little higher in greeting; reflections glide on the polished floor; the camera stays still with a very slow gentle push-in. Natural realistic motion, the same people, no new people, no text"
       },
       "transition": {
         "duration": 4,
-        "prompt": "Fast crash zoom onto the handle of the rolling suitcase, whip pan to the right, motion blur, the image resolves outside the terminal where a black premium sedan waits with its rear door open and a driver in a dark suit holding the door; one continuous fast camera move, no cuts"
+        "prompt": "Fast push-in toward the blank white sign in the greeter's hands until the white fills the entire frame; the white turns into a bright sky with soft clouds; the camera tilts down to reveal the airport forecourt with the green-domed terminal and a black Mercedes sedan with its rear door open, a chauffeur in a waistcoat and a woman in a beige suit beside it. One continuous fast camera move, no cuts, no text"
       }
     },
     {
       "id": "transfer",
-      "keyframe": "Outside the airport terminal in Astana, morning light, a black premium sedan with its rear door held open by a driver in a dark suit, {character} about to step into the car, glass terminal facade softly blurred in the background, medium wide shot",
-      "loop": {
+      "photo": "photo/фото анимации/трансферт с аэропорта.jpg",
+      "clean": "Keep this photo exactly as it is: the same airport building with the green dome, the same black Mercedes sedan, the same chauffeur and the same woman in the beige suit in the same poses, the same camera angle, framing, lighting and colours. Change only the text: the rear licence plate of the car reads exactly \"ADL Service\" in clean dark letters on a white plate. Remove every other text, letter and sign lettering from the image, including all words on the airport buildings and facades, so no other words remain anywhere.",
+      "live": {
         "duration": 5,
-        "prompt": "The traveller settles into the rear seat, the driver keeps holding the door, light reflections move slowly on the car paint, camera perfectly static, subtle ambient motion"
+        "prompt": "The woman in the beige suit walks to the open rear door of the black car; the chauffeur in the waistcoat steps aside and holds the door with a welcoming gesture; clouds drift slowly over the green-domed terminal; the camera stays still with a very slow push-in. Natural realistic motion, the same people, no text"
       },
       "transition": {
         "duration": 4,
-        "prompt": "The car door swings closed toward the camera filling the frame with the dark glossy door, the camera slides along the dark surface and around a corner, and the darkness opens into an elegant warm hotel reception lobby; one continuous camera move, no cuts"
+        "prompt": "The rear car door swings closed toward the camera and its dark glossy black surface fills the whole frame; the camera slides along the dark reflection and emerges gliding along a tall golden ribbed wall in a luxury hotel lobby, arriving at the reception desk with a green onyx marble counter where a receptionist greets a couple with a suitcase. One continuous camera move, no cuts, no text"
       }
     },
     {
       "id": "hotel",
-      "keyframe": "Elegant hotel reception in Astana, warm wood and stone, soft golden lamps, a receptionist in uniform handing a white key card across the desk to {character}, rolling suitcase beside him, medium shot, calm luxury",
-      "loop": {
+      "photo": "photo/фото анимации/регистрация гостиница.jpg",
+      "crop": { "y": 132 },
+      "clean": "Keep this photo exactly as it is: the same hotel lobby, the same golden wall, the same green onyx reception counter, the same people in the same poses and places, the same camera angle, framing, lighting and colours. Remove the black \"Hilton Honors\" sign block from the counter completely so the counter top is clean there. The small framed sign on the counter becomes a blank golden frame with no text. Remove all other text, letters and logos everywhere: on the sign near the doorway, on the monitors and on badges. No words anywhere.",
+      "live": {
         "duration": 5,
-        "prompt": "The receptionist hands over the key card with a small nod, warm lamp light flickers gently, the traveller reaches for the card, camera perfectly static, subtle ambient motion"
+        "prompt": "The receptionist hands the room key card across the onyx counter and the man takes it with a smile; the woman beside him smiles and rests her hand on the suitcase handle; the bellman in the background stands by the luggage trolley; warm lights glow; the camera stays still with a very slow push-in. Natural realistic motion, the same people, no text"
       },
       "transition": {
         "duration": 4,
-        "prompt": "Fast zoom onto the white key card in the hand, the camera pulls up and out through a large hotel window over the Astana skyline toward the giant glass sphere of the EXPO Nur Alem pavilion, then pushes inside into a bright exhibition hall with modern stands; one continuous fast camera move, no cuts"
+        "prompt": "The camera moves down to the golden suitcase on wheels and orbits behind it in a smooth fast arc; as the camera comes around, the suitcase becomes a wooden shipping crate on a trolley in a bright exhibition hall with industrial machinery stands, white booths and workers in dark uniforms. One continuous orbit move, no cuts, no text"
       }
     },
     {
       "id": "expo",
-      "keyframe": "Bright modern exhibition hall at EXPO Astana, industrial machinery stands and clean white booths, two workers in dark uniforms moving wooden crates on a trolley toward a stand, {character} checking a tablet nearby, wide shot, daylight from high windows",
-      "loop": {
+      "photo": "photo/фото анимации/перевозка.jpg",
+      "clean": "Keep this photo exactly as it is: the same exhibition hall, the same machinery, the same white booth, the same workers with wooden crates and the same man with the tablet in the same poses and places, the same camera angle, framing, lighting and colours. Only remove the logo and lettering from the white exhibition booth and the labels on the small plinths, leaving clean white surfaces. No text anywhere.",
+      "live": {
         "duration": 5,
-        "prompt": "Workers push the trolley slowly forward, visitors walk softly in the far background, stand lights glow gently, camera perfectly static, subtle ambient motion"
+        "prompt": "The two workers push the wooden crates on the trolley toward the exhibition stand and set one down; the man in the suit looks up from his tablet and nods with a smile; visitors walk in the far background; sunlight shifts softly on the floor; the camera stays still with a slight slow push-in. Natural realistic motion, the same people, no text"
       },
       "transition": {
         "duration": 4,
-        "prompt": "Whip pan to the left across the exhibition hall, strong motion blur, the light turns warm and golden and the image resolves on an evening restaurant terrace in Astana with the white Bayterek monument crowned by a glowing golden sphere and city lights in the distance; one continuous fast camera move, no cuts"
+        "prompt": "The camera orbits behind the man holding the tablet in a fast smooth arc, sunlight from the tall hall windows flares across the lens, and the camera comes around onto a sunset rooftop restaurant terrace with guests at tables, the white Bayterek monument crowned by a golden sphere and the Astana skyline behind. One continuous orbit move, no cuts, no text"
       }
     },
     {
       "id": "evening",
-      "keyframe": "Evening in Astana, business dinner on a restaurant terrace, {character} and two colleagues at a table with candles and glasses, warm golden ambient light, medium wide shot. In the soft-focus background above the city lights stands the Bayterek monument of Astana: a slender smooth white column that opens at the top into a crown of white branching ribs cradling one large glowing golden glass sphere, like a tree holding a golden egg. Modern low-rise city skyline with warm lights, dusk sky",
-      "loop": {
+      "photo": "photo/фото анимации/ужин досуг.jpg",
+      "crop": { "y": 150 },
+      "live": {
         "duration": 5,
-        "prompt": "Candle flames flicker, city lights twinkle in the distance, the guests talk and one raises a glass slowly, camera perfectly static, subtle ambient motion"
+        "prompt": "Guests at the tables laugh and talk and raise their glasses, the waiter walks between the tables with a tray, warm sunset light glows on the terrace, clouds drift slowly behind the Bayterek monument; the camera stays still with a slow gentle push-in. Natural realistic motion, the same people, no text"
       },
       "transition": {
         "duration": 4,
-        "prompt": "The camera cranes up from the dinner table over the night skyline of Astana, glides across the city lights, and tilts down to an airport departures curb at night where a black sedan pulls up and an airliner takes off in the background; one continuous camera move, no cuts"
+        "prompt": "The camera cranes up from the dining tables toward the golden sphere of the Bayterek monument, the sky quickly darkens from sunset to deep blue night, then the camera tilts down to a night airport curb where a black sedan with an open trunk waits, a man with a suitcase stands by it and an airliner takes off overhead. One continuous camera move, no cuts, no text"
       }
     },
     {
       "id": "departure",
-      "keyframe": "Night at Astana airport departures curb, a black premium sedan stopped at the kerb with its trunk open, {character} with a rolling suitcase looking up at an airliner taking off with its lights glowing in the deep blue night sky, terminal lights glowing warm, wide cinematic shot",
-      "loop": {
+      "photo": "photo/фото анимации/проводы в аэропорт.jpg",
+      "live": {
         "duration": 5,
-        "prompt": "The airliner climbs slowly across the night sky, its lights blink, terminal lights glow, the traveller stands still watching, camera perfectly static, subtle ambient motion"
+        "prompt": "The airliner climbs away into the deep blue night sky with its lights blinking; the man watches it, then closes the car trunk and takes the handle of his suitcase; street lights glow along the terminal; the camera stays still with a slow push-in. Natural realistic motion, the same person, no text"
       }
     }
   ]

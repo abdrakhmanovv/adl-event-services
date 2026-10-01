@@ -34,9 +34,9 @@ function init(stack: HTMLElement) {
   let lastActionAt = 0;
   const COOLDOWN = 450; // мс после перехода, чтобы «дожёвывание» тачпада не листало дальше
 
-  // Первая сцена: через сколько после готовности видео шторка начинает открываться
-  // и во сколько раз ускорить клип открытия (клипы Higgsfield не короче 3 с).
-  const INTRO_DELAY = 500;
+  // Первая сцена: сколько надпись «Добро пожаловать в Казахстан» видна на закрытой шторке
+  // до начала открытия, и во сколько раз ускорить клип открытия (клипы Higgsfield не короче 3 с).
+  const INTRO_DELAY = 1500;
   const INTRO_RATE = 2;
   // Скорость переходов между сценами
   const TRANSITION_RATE = 1.35;
@@ -82,6 +82,66 @@ function init(stack: HTMLElement) {
     v.pause();
     v.classList.remove('is-visible');
   };
+
+  // ---------- сцены на фото: оживают один раз и замирают ----------
+  const liveOf = (i: number) => scenes[i].querySelector<HTMLVideoElement>('.scene__live');
+  const endOf = (i: number) => scenes[i].querySelector<HTMLElement>('.scene__end');
+
+  /**
+   * Показать сцену. play — оживление с начала, после конца видео остаётся на последнем кадре.
+   * frozen — сразу последний кадр (возврат назад). У иллюминатора вместо этого петля облаков.
+   */
+  const startScene = (i: number, how: 'play' | 'frozen') => {
+    const live = liveOf(i);
+    if (!live) return showLoop(i);
+    if (lite) return; // на телефоне и при reduced motion — просто фото
+    const end = endOf(i);
+    if (how === 'frozen') {
+      live.pause();
+      live.classList.remove('is-visible');
+      end?.classList.add('is-visible');
+      return;
+    }
+    end?.classList.remove('is-visible');
+    live.playbackRate = 1;
+    try {
+      live.currentTime = 0;
+    } catch {
+      /* ещё не загружено — начнёт с нуля */
+    }
+    live.addEventListener('playing', () => live.classList.add('is-visible'), { once: true });
+    safePlay(live);
+  };
+
+  const stopScene = (i: number) => {
+    stopLoop(i);
+    const live = liveOf(i);
+    if (live) {
+      live.pause();
+      live.classList.remove('is-visible');
+    }
+    endOf(i)?.classList.remove('is-visible');
+  };
+
+  /**
+   * Если посетитель листает дальше, пока сцена ещё оживает, быстро доигрываем её до конца:
+   * переход начинается именно с последнего кадра, так стыка не видно.
+   */
+  const finishLive = (i: number) =>
+    new Promise<void>((resolve) => {
+      const live = liveOf(i);
+      if (!live || lite || live.ended || live.paused) return resolve();
+      const FAST = 6;
+      live.playbackRate = FAST;
+      const remaining = isFinite(live.duration) ? ((live.duration - live.currentTime) / FAST) * 1000 : 600;
+      const timer = window.setTimeout(done, remaining + 300);
+      function done() {
+        clearTimeout(timer);
+        live!.removeEventListener('ended', done);
+        resolve();
+      }
+      live.addEventListener('ended', done, { once: true });
+    });
 
   const setActive = (i: number) => {
     scenes.forEach((s, k) => {
@@ -156,13 +216,13 @@ function init(stack: HTMLElement) {
   };
 
   // ---------- переходы ----------
-  const crossfade = (from: number, to: number) => {
+  const crossfade = (from: number, to: number, how: 'play' | 'frozen') => {
     const fromEl = scenes[from];
     const toEl = scenes[to];
     toEl.classList.add('is-active');
     gsap.set(toEl, { opacity: 0, scale: 1.05, visibility: 'visible' });
     gsap.set(textOf(to), { opacity: 0 });
-    showLoop(to);
+    startScene(to, how);
     return gsap
       .timeline()
       .to(toEl, { opacity: 1, scale: 1, duration: reduced ? 0.01 : 0.5, ease: 'power2.out' }, 0)
@@ -199,8 +259,8 @@ function init(stack: HTMLElement) {
       const expected = (v.duration && isFinite(v.duration) ? v.duration / v.playbackRate : 3) * 1000 + 400;
       const timer = window.setTimeout(() => finish(true), expected);
 
-      // Петля следующей сцены стартует только после перехода (в goTo), с первого кадра:
-      // последний кадр перехода = первый кадр петли = poster следующей сцены.
+      // Следующая сцена стартует только после перехода (в goTo), с первого кадра:
+      // последний кадр перехода = первый кадр её видео = poster следующей сцены.
       safePlay(v);
     });
 
@@ -212,28 +272,32 @@ function init(stack: HTMLElement) {
 
     textOut(from);
 
-    if (direction === 'forward' && !lite) {
+    // видеопереход есть только к соседней следующей сцене; прыжки по точкам — мягкой сменой
+    const adjacentForward = direction === 'forward' && to === from + 1;
+
+    if (adjacentForward && !lite) {
+      await finishLive(from); // переход начинается с последнего кадра оживления
       const played = await playTransitionVideo(from, to);
       if (played) {
-        // переход закончился на первом кадре следующей сцены: показываем её poster и запускаем петлю с нуля
+        // переход закончился на первом кадре следующей сцены: показываем её и оживляем с нуля
         setActive(to);
-        showLoop(to);
+        startScene(to, 'play');
         const v = transitionOf(from);
         if (v) {
           v.classList.remove('is-playing');
           v.pause();
           v.currentTime = 0;
         }
-        stopLoop(from);
+        stopScene(from);
       } else {
-        await crossfade(from, to);
+        await crossfade(from, to, 'play');
         setActive(to);
-        stopLoop(from);
+        stopScene(from);
       }
     } else {
-      await crossfade(from, to);
+      await crossfade(from, to, direction === 'backward' ? 'frozen' : 'play');
       setActive(to);
-      stopLoop(from);
+      stopScene(from);
     }
 
     current = to;
@@ -245,7 +309,10 @@ function init(stack: HTMLElement) {
 
   const preloadAround = (i: number) => {
     loadVideo(transitionOf(i));
-    if (i + 1 <= last) loadVideo(loopOf(i + 1));
+    if (i + 1 <= last) {
+      loadVideo(loopOf(i + 1));
+      loadVideo(liveOf(i + 1));
+    }
     if (i - 1 >= 0) loadVideo(loopOf(i - 1));
   };
 
@@ -413,7 +480,7 @@ function init(stack: HTMLElement) {
     current = idx;
     setActive(idx);
     gsap.set(partsOf(idx), { opacity: 1, y: 0 });
-    showLoop(idx);
+    startScene(idx, 'play');
     preloadAround(idx);
     stack.classList.add('has-moved');
     return true;

@@ -1,10 +1,10 @@
 {
-  "_comment": "Индексы выбранных вариантов (0 = первый файл, keyframe-0). keyframe/closed — кадры, loop/transition/intro — клипы.",
+  "_comment": "Индексы выбранных вариантов (0 = первый файл). window: keyframe/closed — кадры, intro/loop/transition — клипы. Сцены на фото: photo (0 исходник, 1 очищенный), live и transition — клипы.",
   "window": { "keyframe": 4, "closed": 4, "intro": 0, "loop": 0, "transition": 0 },
-  "airport": { "keyframe": 0, "loop": 0, "transition": 0 },
-  "transfer": { "keyframe": 0, "loop": 0, "transition": 0 },
-  "hotel": { "keyframe": 0, "loop": 0, "transition": 0 },
-  "expo": { "keyframe": 0, "loop": 0, "transition": 0 },
-  "evening": { "keyframe": 0, "loop": 0, "transition": 0 },
-  "departure": { "keyframe": 0, "loop": 0 }
+  "airport": { "photo": 1, "live": 0, "transition": 0 },
+  "transfer": { "photo": 1, "live": 0, "transition": 0 },
+  "hotel": { "photo": 1, "live": 0, "transition": 0 },
+  "expo": { "photo": 1, "live": 0, "transition": 0 },
+  "evening": { "photo": 0, "live": 0, "transition": 0 },
+  "departure": { "photo": 0, "live": 0 }
 }

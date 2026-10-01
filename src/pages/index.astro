@@ -10,8 +10,12 @@ import { site, upcomingEvent } from '@/content/ru/site';
 import { services } from '@/content/ru/services';
 import { scenes, audiences, whyItems, homeFaq } from '@/content/ru/home';
 import { url, asset } from '@/lib/url';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 
 const media = (id: string, file: string) => asset(`/media/scenes/${id}/${file}`);
+/** Есть ли файл сцены в public/: видео подключаем, только когда оно уже сгенерировано. */
+const has = (id: string, file: string) => existsSync(join(process.cwd(), 'public', 'media', 'scenes', id, file));
 ---
 
 <Base title={site.name} theme="night" bodyClass="page-home" floating={false}>
@@ -28,7 +32,7 @@ const media = (id: string, file: string) => asset(`/media/scenes/${id}/${file}`)
           >
             <div class="scene__media">
               <img class="scene__poster" src={media(s.media, 'poster.webp')} alt="" decoding="async" loading={i === 0 ? 'eager' : 'lazy'} />
-              {i === 0 && (
+              {i === 0 && has(s.media, 'intro.mp4') && (
                 <>
                   <img class="scene__intro-poster" src={media(s.media, 'intro-poster.webp')} alt="" decoding="async" />
                   <video class="scene__intro" muted playsinline preload="auto" aria-hidden="true">
@@ -42,10 +46,22 @@ const media = (id: string, file: string) => asset(`/media/scenes/${id}/${file}`)
                   <span class="shade-text__title">{s.shade.title}</span>
                 </div>
               )}
-              <video class="scene__loop" muted loop playsinline preload={i === 0 ? 'auto' : 'none'} aria-hidden="true">
-                <source src={media(s.media, 'loop.mp4')} type="video/mp4" />
-              </video>
-              {i < scenes.length - 1 && (
+              {/* иллюминатор: бесконечная петля облаков */}
+              {has(s.media, 'loop.mp4') && (
+                <video class="scene__loop" muted loop playsinline preload={i === 0 ? 'auto' : 'none'} aria-hidden="true">
+                  <source src={media(s.media, 'loop.mp4')} type="video/mp4" />
+                </video>
+              )}
+              {/* сцены на фото: оживают один раз и замирают на последнем кадре */}
+              {has(s.media, 'live.mp4') && (
+                <video class="scene__live" muted playsinline preload="none" aria-hidden="true">
+                  <source src={media(s.media, 'live.mp4')} type="video/mp4" />
+                </video>
+              )}
+              {has(s.media, 'end.webp') && has(s.media, 'live.mp4') && (
+                <img class="scene__end" src={media(s.media, 'end.webp')} alt="" decoding="async" loading="lazy" />
+              )}
+              {i < scenes.length - 1 && has(s.media, 'transition.mp4') && (
                 <video class="scene__transition" muted playsinline preload="none" aria-hidden="true">
                   <source src={media(s.media, 'transition.mp4')} type="video/mp4" />
                 </video>
@@ -328,6 +344,25 @@ const media = (id: string, file: string) => asset(`/media/scenes/${id}/${file}`)
   }
 
   .scene__loop.is-visible {
+    opacity: 1;
+  }
+
+  .scene__live {
+    z-index: 1;
+    opacity: 0;
+  }
+
+  .scene__live.is-visible {
+    opacity: 1;
+  }
+
+  /* последний кадр оживления: виден, когда возвращаемся к сцене назад */
+  .scene__end {
+    z-index: 2;
+    opacity: 0;
+  }
+
+  .scene__end.is-visible {
     opacity: 1;
   }
 

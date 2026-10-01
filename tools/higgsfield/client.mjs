@@ -5,7 +5,7 @@
  *   HF_API_KEY_SECRET=...
  */
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const here = dirname(fileURLToPath(import.meta.url));
@@ -120,13 +120,27 @@ export function resultUrls(json) {
   return Array.from(new Set(urls));
 }
 
-export async function download(url, dest) {
+/** Скачать файл. Повторяет целиком (запрос и чтение тела): обрыв бывает и посреди скачивания. */
+export async function download(url, dest, tries = 5) {
   mkdirSync(dirname(dest), { recursive: true });
-  const res = await fetchRetry(url, {});
-  if (!res.ok) throw new Error(`Не скачалось ${url}: ${res.status}`);
-  const buf = Buffer.from(await res.arrayBuffer());
-  writeFileSync(dest, buf);
-  return buf.length;
+  let lastErr;
+  for (let attempt = 1; attempt <= tries; attempt++) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const buf = Buffer.from(await res.arrayBuffer());
+      writeFileSync(dest, buf);
+      return buf.length;
+    } catch (err) {
+      lastErr = err;
+      if (attempt < tries) {
+        const wait = 2000 * attempt;
+        process.stdout.write(`  скачивание: ${err?.cause?.code || err?.message}, повтор через ${wait / 1000} с\n`);
+        await new Promise((r) => setTimeout(r, wait));
+      }
+    }
+  }
+  throw new Error(`Не скачалось ${url}: ${lastErr?.message}`);
 }
 
 export function readJson(file, fallback) {
@@ -137,6 +151,71 @@ export function readJson(file, fallback) {
 export function writeJson(file, data) {
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, JSON.stringify(data, null, 2) + '\n');
+}
+
+export const MANIFEST = join(OUT, 'manifest.json');
+
+/**
+ * Изменить manifest.json безопасно для параллельных процессов: перечитать свежую версию
+ * с диска, применить правку и сразу записать. Возвращает обновлённый manifest.
+ */
+export function updateManifest(fn) {
+  const fresh = readJson(MANIFEST, { keyframes: {}, videos: {} });
+  fresh.keyframes ??= {};
+  fresh.videos ??= {};
+  fn(fresh);
+  writeJson(MANIFEST, fresh);
+  return fresh;
+}
+
+const MIME = {
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.webp': 'image/webp',
+  '.mp4': 'video/mp4',
+};
+
+/**
+ * Загрузить локальный файл в хранилище Higgsfield и получить публичную ссылку для моделей.
+ * POST /files/generate-upload-url → PUT файла по upload_url → public_url.
+ */
+export async function uploadFile(file) {
+  const type = MIME[extname(file).toLowerCase()];
+  if (!type) throw new Error(`Неподдерживаемый формат для загрузки: ${file}`);
+  const res = await fetchRetry(`${API}/files/generate-upload-url`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({ content_type: type }),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || !json.upload_url || !json.public_url) {
+    throw new Error(`Не удалось получить ссылку для загрузки (${res.status}): ${JSON.stringify(json).slice(0, 300)}`);
+  }
+  // ключи API в хранилище не отправляем: только заголовки, которые выдал сервер
+  const put = await fetchRetry(json.upload_url, {
+    method: 'PUT',
+    headers: json.upload_headers ?? { 'Content-Type': type },
+    body: readFileSync(file),
+  });
+  if (!put.ok) throw new Error(`Загрузка ${file} не удалась: HTTP ${put.status}`);
+  return json.public_url;
+}
+
+/** Правка изображения через Qwen Image 3 Edit. Возвращает URL результата. */
+export async function editImage(imageUrls, prompt, label = 'edit') {
+  const job = await submit('/alibaba/qwen-image-3/edit', {
+    prompt,
+    image_urls: imageUrls,
+    resolution: '2k',
+    aspect_ratio: '16:9',
+    negative_prompt:
+      'text, letters, words, logo, watermark, caption, different camera angle, different framing, cropped, zoomed, extra people, distorted faces, extra fingers',
+  });
+  const done = await waitFor(job.status_url, { label });
+  const urls = resultUrls(done);
+  if (!urls.length) throw new Error(`Правка ${label} не вернула изображение: ${JSON.stringify(done).slice(0, 400)}`);
+  return { url: urls[0], request_id: job.request_id };
 }
 
 /** Разбор аргументов вида --only window --variants 2 --force */
