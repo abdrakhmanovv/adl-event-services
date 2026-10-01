@@ -112,7 +112,7 @@ const isActive = (href: string) => current === url(href).replace(/\/$/, '');
       </ul>
       <div class="drawer__contacts">
         <a href={site.phoneHref} class="drawer__contact"><Icon name="phone" size={18} />{site.phone}</a>
-        <a href={contactLinks.mail()} class="drawer__contact"><Icon name="mail" size={18} />{site.email}</a>
+        {site.email && <a href={contactLinks.mail()} class="drawer__contact"><Icon name="mail" size={18} />{site.email}</a>}
         <div class="btn-row">
           <a class="btn btn--primary" href={url('/contacts#form')}>Оставить заявку</a>
           <a class="btn btn--ghost" href={contactLinks.whatsapp()} target="_blank" rel="noopener">

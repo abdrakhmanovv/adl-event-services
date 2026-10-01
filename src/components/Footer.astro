@@ -39,15 +39,19 @@ const year = new Date().getFullYear();
         <p class="footer__title">Контакты</p>
         <ul class="footer__links footer__links--contacts">
           <li><a href={site.phoneHref}><Icon name="phone" size={18} />{site.phone}</a></li>
-          <li><a href={contactLinks.mail()}><Icon name="mail" size={18} />{site.email}</a></li>
           <li>
             <a href={contactLinks.whatsapp()} target="_blank" rel="noopener"><Icon name="message-circle" size={18} />WhatsApp</a>
           </li>
-          <li>
-            <a href={contactLinks.telegram()} target="_blank" rel="noopener"><Icon name="send" size={18} />Telegram</a>
-          </li>
-          <li><span><Icon name="map-pin" size={18} />{site.address}</span></li>
-          <li><span><Icon name="clock" size={18} />{site.hours}</span></li>
+          {site.email && <li><a href={contactLinks.mail()}><Icon name="mail" size={18} />{site.email}</a></li>}
+          {
+            site.telegram && (
+              <li>
+                <a href={contactLinks.telegram()} target="_blank" rel="noopener"><Icon name="send" size={18} />Telegram</a>
+              </li>
+            )
+          }
+          {site.address && <li><span><Icon name="map-pin" size={18} />{site.address}</span></li>}
+          {site.hours && <li><span><Icon name="clock" size={18} />{site.hours}</span></li>}
         </ul>
       </div>
     </div>

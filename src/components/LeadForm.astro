@@ -50,9 +50,13 @@ const serviceOptions = [
           <a class="btn btn--ghost btn--sm" href={contactLinks.whatsapp()} target="_blank" rel="noopener">
             <Icon name="message-circle" />WhatsApp
           </a>
-          <a class="btn btn--ghost btn--sm" href={contactLinks.telegram()} target="_blank" rel="noopener">
-            <Icon name="send" />Telegram
-          </a>
+          {
+            site.telegram && (
+              <a class="btn btn--ghost btn--sm" href={contactLinks.telegram()} target="_blank" rel="noopener">
+                <Icon name="send" />Telegram
+              </a>
+            )
+          }
           <a class="btn btn--ghost btn--sm" href={site.phoneHref}>
             <Icon name="phone" />{site.phone}
           </a>
@@ -229,7 +233,7 @@ const serviceOptions = [
           success.hidden = false;
           form.reset();
         } catch {
-          showError('Не удалось отправить форму. Напишите нам в WhatsApp или Telegram, кнопки слева.');
+          showError('Не удалось отправить форму. Напишите нам в WhatsApp или позвоните, кнопки слева.');
         } finally {
           submit.disabled = false;
           submit.textContent = 'Отправить запрос';

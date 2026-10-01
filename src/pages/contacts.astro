@@ -4,17 +4,19 @@ import Icon from '@/components/Icon.astro';
 import LeadForm from '@/components/LeadForm.astro';
 import { site, contactLinks } from '@/content/ru/site';
 
-const cards = [
-  { icon: 'phone', label: 'Телефон', value: site.phone, href: site.phoneHref },
-  { icon: 'mail', label: 'Email', value: site.email, href: contactLinks.mail() },
-  { icon: 'message-circle', label: 'WhatsApp', value: 'Написать в WhatsApp', href: contactLinks.whatsapp(), external: true },
-  { icon: 'send', label: 'Telegram', value: `@${site.telegram}`, href: contactLinks.telegram(), external: true },
-  { icon: 'map-pin', label: 'Офис', value: site.address },
-  { icon: 'clock', label: 'Часы работы', value: site.hours },
-];
+type Card = { icon: string; label: string; value: string; href?: string; external?: boolean; show: string };
+// show — поле из site.ts: пустое значение прячет карточку
+const cards: Card[] = [
+  { icon: 'phone', label: 'Телефон', value: site.phone, href: site.phoneHref, show: site.phone },
+  { icon: 'message-circle', label: 'WhatsApp', value: site.phone, href: contactLinks.whatsapp(), external: true, show: site.whatsapp },
+  { icon: 'mail', label: 'Email', value: site.email, href: contactLinks.mail(), show: site.email },
+  { icon: 'send', label: 'Telegram', value: `@${site.telegram}`, href: contactLinks.telegram(), external: true, show: site.telegram },
+  { icon: 'map-pin', label: site.address.includes(',') ? 'Офис' : 'Город', value: site.address, show: site.address },
+  { icon: 'clock', label: 'Часы работы', value: site.hours, show: site.hours },
+].filter((c) => Boolean(c.show));
 ---
 
-<Base title="Контакты" description={`Контакты ADL Event Services в Астане: телефон, email, WhatsApp, Telegram и форма заявки. ${site.responseTime}.`}>
+<Base title="Контакты" description={`Контакты ADL Event Services в Астане: телефон ${site.phone}, WhatsApp и форма заявки. ${site.responseTime}.`}>
   <section class="hero">
     <div class="container hero__inner">
       <h1>Контакты</h1>
