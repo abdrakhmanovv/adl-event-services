@@ -10,8 +10,12 @@ import { site, upcomingEvent } from '@/content/ru/site';
 import { services } from '@/content/ru/services';
 import { scenes, audiences, whyItems, homeFaq } from '@/content/ru/home';
 import { url, asset } from '@/lib/url';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 
 const media = (id: string, file: string) => asset(`/media/scenes/${id}/${file}`);
+/** Есть ли файл сцены в public/: видео подключаем, только когда оно уже сгенерировано. */
+const has = (id: string, file: string) => existsSync(join(process.cwd(), 'public', 'media', 'scenes', id, file));
 ---
 
 <Base title={site.name} theme="night" bodyClass="page-home" floating={false}>
@@ -28,7 +32,7 @@ const media = (id: string, file: string) => asset(`/media/scenes/${id}/${file}`)
           >
             <div class="scene__media">
               <img class="scene__poster" src={media(s.media, 'poster.webp')} alt="" decoding="async" loading={i === 0 ? 'eager' : 'lazy'} />
-              {i === 0 && (
+              {i === 0 && has(s.media, 'intro.mp4') && (
                 <>
                   <img class="scene__intro-poster" src={media(s.media, 'intro-poster.webp')} alt="" decoding="async" />
                   <video class="scene__intro" muted playsinline preload="auto" aria-hidden="true">
@@ -36,10 +40,28 @@ const media = (id: string, file: string) => asset(`/media/scenes/${id}/${file}`)
                   </video>
                 </>
               )}
-              <video class="scene__loop" muted loop playsinline preload={i === 0 ? 'auto' : 'none'} aria-hidden="true">
-                <source src={media(s.media, 'loop.mp4')} type="video/mp4" />
-              </video>
-              {i < scenes.length - 1 && (
+              {s.shade && (
+                <div class="shade-text" data-shade-text aria-hidden="true">
+                  <span class="shade-text__label">{s.shade.label}</span>
+                  <span class="shade-text__title">{s.shade.title}</span>
+                </div>
+              )}
+              {/* иллюминатор: бесконечная петля облаков */}
+              {has(s.media, 'loop.mp4') && (
+                <video class="scene__loop" muted loop playsinline preload={i === 0 ? 'auto' : 'none'} aria-hidden="true">
+                  <source src={media(s.media, 'loop.mp4')} type="video/mp4" />
+                </video>
+              )}
+              {/* сцены на фото: оживают один раз и замирают на последнем кадре */}
+              {has(s.media, 'live.mp4') && (
+                <video class="scene__live" muted playsinline preload="none" aria-hidden="true">
+                  <source src={media(s.media, 'live.mp4')} type="video/mp4" />
+                </video>
+              )}
+              {has(s.media, 'end.webp') && has(s.media, 'live.mp4') && (
+                <img class="scene__end" src={media(s.media, 'end.webp')} alt="" decoding="async" loading="lazy" />
+              )}
+              {i < scenes.length - 1 && has(s.media, 'transition.mp4') && (
                 <video class="scene__transition" muted playsinline preload="none" aria-hidden="true">
                   <source src={media(s.media, 'transition.mp4')} type="video/mp4" />
                 </video>
@@ -47,21 +69,51 @@ const media = (id: string, file: string) => asset(`/media/scenes/${id}/${file}`)
             </div>
             <div class="scene__vignette" />
             <div class="container scene__content">
-              <div class:list={['scene__text', i === 0 && 'scene__text--first']}>
-                {i === 0 ? <h1 class="scene__title">{s.title}</h1> : <h2 class="scene__title">{s.title}</h2>}
-                <p class="scene__lead">{s.text}</p>
-                <div class="btn-row">
-                  {s.primary && (
-                    <a class="btn btn--light" href={url(s.primary.href)}>
-                      {s.primary.label}
-                    </a>
-                  )}
-                  <a class="btn btn--outline-light" href={url(s.link.href)}>
-                    {s.link.label}
-                    <Icon name="arrow-right" size={18} />
-                  </a>
-                </div>
-              </div>
+              {
+                s.titleParts ? (
+                  <div class="scene__text scene__text--first">
+                    <h1 class="hero-title">
+                      {s.titleParts.map((part, k) => (
+                        <span class={k === 0 ? 'hero-title__a' : 'hero-title__b'} data-anim>
+                          {part.split('|').map((line) => (
+                            <span class="hero-line">{line} </span>
+                          ))}
+                        </span>
+                      ))}
+                    </h1>
+                    <div class="hero-aside">
+                      <p class="scene__lead" data-anim>{s.text}</p>
+                      <div class="btn-row" data-anim>
+                        {s.primary && (
+                          <a class="btn btn--light" href={url(s.primary.href)}>
+                            {s.primary.label}
+                          </a>
+                        )}
+                        <a class="btn btn--outline-light" href={url(s.link.href)}>
+                          {s.link.label}
+                          <Icon name="arrow-right" size={18} />
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div class="scene__text">
+                    {i === 0 ? <h1 class="scene__title">{s.title}</h1> : <h2 class="scene__title">{s.title}</h2>}
+                    <p class="scene__lead">{s.text}</p>
+                    <div class="btn-row">
+                      {s.primary && (
+                        <a class="btn btn--light" href={url(s.primary.href)}>
+                          {s.primary.label}
+                        </a>
+                      )}
+                      <a class="btn btn--outline-light" href={url(s.link.href)}>
+                        {s.link.label}
+                        <Icon name="arrow-right" size={18} />
+                      </a>
+                    </div>
+                  </div>
+                )
+              }
             </div>
           </article>
         ))
@@ -224,6 +276,53 @@ const media = (id: string, file: string) => asset(`/media/scenes/${id}/${file}`)
   .scene__media {
     position: absolute;
     inset: 0;
+    /* размеры контейнера нужны надписи на шторке: она привязана к кадру, а не к окну браузера */
+    container-type: size;
+  }
+
+  /*
+   * Надпись на закрытой шторке. Кадр 16:9 растянут как object-fit: cover, поэтому
+   * считаем его реальный размер и ставим текст в долях кадра: --shade-x/-y — центр шторки,
+   * --shade-w — ширина текста. Подбирается один раз под выбранный кадр.
+   */
+  .shade-text {
+    --shade-x: 0.509;
+    --shade-y: 0.47;
+    --shade-w: 0.18;
+    --img-w: max(100cqw, calc(100cqh * 16 / 9));
+    --img-h: calc(var(--img-w) * 9 / 16);
+    position: absolute;
+    z-index: 4;
+    left: calc(50cqw + (var(--shade-x) - 0.5) * var(--img-w));
+    top: calc(50cqh + (var(--shade-y) - 0.5) * var(--img-h));
+    width: calc(var(--shade-w) * var(--img-w));
+    transform: translate(-50%, -50%);
+    display: grid;
+    gap: 0.9em;
+    justify-items: center;
+    text-align: center;
+    color: #fff;
+    text-shadow: 0 1px 12px rgba(40, 28, 18, 0.45);
+    pointer-events: none;
+  }
+
+  .shade-text__label {
+    font-size: clamp(9px, calc(var(--shade-w) * var(--img-w) * 0.042), 14px);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    opacity: 0.85;
+  }
+
+  .shade-text__title {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: clamp(15px, calc(var(--shade-w) * var(--img-w) * 0.1), 40px);
+    line-height: 1.15;
+    text-wrap: balance;
+  }
+
+  .shade-text.is-hidden {
+    display: none;
   }
 
   .scene__media > img,
@@ -245,6 +344,25 @@ const media = (id: string, file: string) => asset(`/media/scenes/${id}/${file}`)
   }
 
   .scene__loop.is-visible {
+    opacity: 1;
+  }
+
+  .scene__live {
+    z-index: 1;
+    opacity: 0;
+  }
+
+  .scene__live.is-visible {
+    opacity: 1;
+  }
+
+  /* последний кадр оживления: виден, когда возвращаемся к сцене назад */
+  .scene__end {
+    z-index: 2;
+    opacity: 0;
+  }
+
+  .scene__end.is-visible {
     opacity: 1;
   }
 
@@ -270,6 +388,8 @@ const media = (id: string, file: string) => asset(`/media/scenes/${id}/${file}`)
     z-index: 4;
     opacity: 0;
     pointer-events: none;
+    /* петля к моменту скролла уже ушла от первого кадра, короткое появление прячет этот скачок */
+    transition: opacity 150ms linear;
   }
 
   .scene__transition.is-playing {
@@ -302,19 +422,69 @@ const media = (id: string, file: string) => asset(`/media/scenes/${id}/${file}`)
     max-width: 40rem;
   }
 
-  .scene__text--first {
-    max-width: 52rem;
-  }
-
   .scene__title {
     font-size: var(--fs-h1);
     line-height: 1.06;
     color: #fff;
   }
 
-  .scene__text--first .scene__title {
-    font-size: var(--fs-hero);
+  /*
+   * Первая сцена, как в референсе jeskojets: заголовок обрамляет иллюминатор.
+   * Первая часть слева сверху, вторая справа снизу, описание и кнопки слева снизу.
+   */
+  .scene__text--first {
+    position: relative;
+    align-self: stretch;
+    width: 100%;
+    max-width: none;
+    display: block;
+    margin-top: 4vh;
+  }
+
+  .hero-title {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    pointer-events: none;
+    font-size: clamp(2rem, 0.4rem + 3.4vw, 4.2rem);
+    font-weight: 600;
     line-height: 1.02;
+    color: #fff;
+    text-shadow:
+      0 1px 2px rgba(15, 12, 10, 0.25),
+      0 2px 30px rgba(15, 12, 10, 0.45);
+  }
+
+  .hero-title__a,
+  .hero-title__b {
+    position: absolute;
+    display: block;
+  }
+
+  /* строки заданы в тексте знаком |, на компьютере каждая — отдельной строкой */
+  .hero-line {
+    display: block;
+    white-space: nowrap;
+  }
+
+  .hero-title__a {
+    top: 0;
+    left: 0;
+  }
+
+  .hero-title__b {
+    right: 0;
+    bottom: 24%;
+    text-align: right;
+  }
+
+  .hero-aside {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    max-width: 26rem;
+    display: grid;
+    gap: var(--space-4);
   }
 
   .scene__lead {
@@ -462,6 +632,75 @@ const media = (id: string, file: string) => asset(`/media/scenes/${id}/${file}`)
     }
     .scene__lead {
       font-size: var(--fs-1);
+    }
+  }
+
+  /*
+   * Узкие и низкие окна: на телефоне иллюминатор занимает весь экран, обрамлять его нечем.
+   * Заголовок первой сцены становится обычным блоком внизу, как у остальных сцен.
+   */
+  @media (max-width: 768px), (max-height: 640px) {
+    .scene__text--first {
+      position: static;
+      align-self: auto;
+      height: auto;
+      margin-top: 0;
+      display: grid;
+      gap: var(--space-4);
+    }
+    .hero-title,
+    .hero-title__a,
+    .hero-title__b,
+    .hero-aside {
+      position: static;
+      max-width: none;
+      text-align: left;
+    }
+    .hero-title {
+      font-size: var(--fs-h1);
+      line-height: 1.06;
+      pointer-events: auto;
+    }
+    .hero-line {
+      display: inline;
+      white-space: normal;
+    }
+    .hero-aside {
+      display: grid;
+      gap: var(--space-4);
+    }
+  }
+
+  /* низкие окна (телефон в ландшафте, маленькое окно браузера): текст должен помещаться */
+  @media (max-height: 640px) {
+    .scenes {
+      min-height: 0;
+    }
+    .scene__content {
+      padding-bottom: 72px;
+    }
+    .scene__text,
+    .scene__text--first,
+    .hero-aside {
+      gap: var(--space-3);
+    }
+    .scene__title,
+    .hero-title {
+      font-size: clamp(1.3rem, 4.6vh, 2.4rem);
+    }
+    .scene__lead {
+      font-size: var(--fs-0);
+      max-width: 40em;
+    }
+    .scenes__hint {
+      display: none;
+    }
+  }
+
+  /* телефон в ландшафте: точки навигации перекрывают кнопки, прогресс показывает счётчик */
+  @media (max-width: 768px) and (max-height: 640px) {
+    .scenes__nav {
+      display: none;
     }
   }
 

@@ -11,6 +11,13 @@ export type Scene = {
   link: { label: string; href: string };
   /** папка с медиа в public/media/scenes/<id>/ */
   media: string;
+  /** надпись на закрытой шторке иллюминатора, видна до её открытия (только первая сцена) */
+  shade?: { label: string; title: string };
+  /**
+   * Заголовок первой сцены в две части: слева сверху и справа снизу от иллюминатора.
+   * Знак | — перенос строки на компьютере; на телефоне текст идёт сплошным абзацем.
+   */
+  titleParts?: [string, string];
 };
 
 export const scenes: Scene[] = [
@@ -18,10 +25,12 @@ export const scenes: Scene[] = [
     id: 'window',
     label: 'Начало',
     title: 'Вы занимаетесь бизнесом. Мы занимаемся организацией вашего пребывания.',
+    titleParts: ['Вы занимаетесь|бизнесом.', 'Мы занимаемся|организацией|вашего|пребывания.'],
     text: 'Размещение, трансферы, визы, доставка, логистика и организационная поддержка для участников деловых мероприятий в Казахстане.',
     primary: { label: 'Оставить заявку', href: '/contacts#form' },
     link: { label: 'Все услуги', href: '/event-support' },
     media: 'window',
+    shade: { label: 'ADL Event Services', title: 'Добро пожаловать в Казахстан' },
   },
   {
     id: 'airport',

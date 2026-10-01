@@ -34,6 +34,13 @@ function init(stack: HTMLElement) {
   let lastActionAt = 0;
   const COOLDOWN = 450; // мс после перехода, чтобы «дожёвывание» тачпада не листало дальше
 
+  // Первая сцена: сколько надпись «Добро пожаловать в Казахстан» видна на закрытой шторке
+  // до начала открытия, и во сколько раз ускорить клип открытия (клипы Higgsfield не короче 3 с).
+  const INTRO_DELAY = 1500;
+  const INTRO_RATE = 2;
+  // Скорость переходов между сценами
+  const TRANSITION_RATE = 1.35;
+
   // ---------- вспомогательные ----------
   const loopOf = (i: number) => scenes[i].querySelector<HTMLVideoElement>('.scene__loop');
   const transitionOf = (i: number) => scenes[i].querySelector<HTMLVideoElement>('.scene__transition');
@@ -53,10 +60,19 @@ function init(stack: HTMLElement) {
     }
   };
 
+  /**
+   * Запустить фоновую петлю сцены с первого кадра. Пока видео не выдало кадр, виден
+   * poster.webp — это тот же первый кадр, поэтому стык с переходом не заметен.
+   */
   const showLoop = (i: number) => {
     const v = loopOf(i);
     if (!v || lite) return;
-    v.classList.add('is-visible');
+    try {
+      v.currentTime = 0;
+    } catch {
+      /* метаданные ещё не загружены — видео и так начнёт с нуля */
+    }
+    v.addEventListener('playing', () => v.classList.add('is-visible'), { once: true });
     safePlay(v);
   };
 
@@ -64,7 +80,68 @@ function init(stack: HTMLElement) {
     const v = loopOf(i);
     if (!v) return;
     v.pause();
+    v.classList.remove('is-visible');
   };
+
+  // ---------- сцены на фото: оживают один раз и замирают ----------
+  const liveOf = (i: number) => scenes[i].querySelector<HTMLVideoElement>('.scene__live');
+  const endOf = (i: number) => scenes[i].querySelector<HTMLElement>('.scene__end');
+
+  /**
+   * Показать сцену. play — оживление с начала, после конца видео остаётся на последнем кадре.
+   * frozen — сразу последний кадр (возврат назад). У иллюминатора вместо этого петля облаков.
+   */
+  const startScene = (i: number, how: 'play' | 'frozen') => {
+    const live = liveOf(i);
+    if (!live) return showLoop(i);
+    if (lite) return; // на телефоне и при reduced motion — просто фото
+    const end = endOf(i);
+    if (how === 'frozen') {
+      live.pause();
+      live.classList.remove('is-visible');
+      end?.classList.add('is-visible');
+      return;
+    }
+    end?.classList.remove('is-visible');
+    live.playbackRate = 1;
+    try {
+      live.currentTime = 0;
+    } catch {
+      /* ещё не загружено — начнёт с нуля */
+    }
+    live.addEventListener('playing', () => live.classList.add('is-visible'), { once: true });
+    safePlay(live);
+  };
+
+  const stopScene = (i: number) => {
+    stopLoop(i);
+    const live = liveOf(i);
+    if (live) {
+      live.pause();
+      live.classList.remove('is-visible');
+    }
+    endOf(i)?.classList.remove('is-visible');
+  };
+
+  /**
+   * Если посетитель листает дальше, пока сцена ещё оживает, быстро доигрываем её до конца:
+   * переход начинается именно с последнего кадра, так стыка не видно.
+   */
+  const finishLive = (i: number) =>
+    new Promise<void>((resolve) => {
+      const live = liveOf(i);
+      if (!live || lite || live.ended || live.paused) return resolve();
+      const FAST = 6;
+      live.playbackRate = FAST;
+      const remaining = isFinite(live.duration) ? ((live.duration - live.currentTime) / FAST) * 1000 : 600;
+      const timer = window.setTimeout(done, remaining + 300);
+      function done() {
+        clearTimeout(timer);
+        live!.removeEventListener('ended', done);
+        resolve();
+      }
+      live.addEventListener('ended', done, { once: true });
+    });
 
   const setActive = (i: number) => {
     scenes.forEach((s, k) => {
@@ -87,21 +164,27 @@ function init(stack: HTMLElement) {
     if (id) history.replaceState(null, '', i === 0 ? location.pathname : `#${id}`);
   };
 
+  /** Что анимировать в тексте сцены: элементы с data-anim (первая сцена), иначе прямые потомки. */
+  const partsOf = (i: number) => {
+    const el = textOf(i);
+    const marked = el.querySelectorAll<HTMLElement>('[data-anim]');
+    return marked.length ? Array.from(marked) : Array.from(el.children);
+  };
+
   const textIn = (i: number, delay = 0) => {
     const el = textOf(i);
-    const parts = Array.from(el.children);
+    const parts = partsOf(i);
     gsap.killTweensOf(parts);
     gsap.set(el, { opacity: 1 });
     return gsap.fromTo(
       parts,
       { opacity: 0, y: 28 },
-      { opacity: 1, y: 0, duration: reduced ? 0.01 : 0.55, stagger: reduced ? 0 : 0.08, ease: 'power3.out', delay },
+      { opacity: 1, y: 0, duration: reduced ? 0.01 : 0.55, stagger: reduced ? 0 : 0.1, ease: 'power3.out', delay },
     );
   };
 
   const textOut = (i: number) => {
-    const el = textOf(i);
-    const parts = Array.from(el.children);
+    const parts = partsOf(i);
     gsap.killTweensOf(parts);
     return gsap.to(parts, {
       opacity: 0,
@@ -133,13 +216,13 @@ function init(stack: HTMLElement) {
   };
 
   // ---------- переходы ----------
-  const crossfade = (from: number, to: number) => {
+  const crossfade = (from: number, to: number, how: 'play' | 'frozen') => {
     const fromEl = scenes[from];
     const toEl = scenes[to];
     toEl.classList.add('is-active');
     gsap.set(toEl, { opacity: 0, scale: 1.05, visibility: 'visible' });
     gsap.set(textOf(to), { opacity: 0 });
-    showLoop(to);
+    startScene(to, how);
     return gsap
       .timeline()
       .to(toEl, { opacity: 1, scale: 1, duration: reduced ? 0.01 : 0.5, ease: 'power2.out' }, 0)
@@ -167,7 +250,7 @@ function init(stack: HTMLElement) {
       const onError = () => finish(false);
 
       v.currentTime = 0;
-      v.playbackRate = 1.35;
+      v.playbackRate = TRANSITION_RATE;
       v.classList.add('is-playing');
       v.addEventListener('ended', onEnded);
       v.addEventListener('error', onError);
@@ -176,12 +259,8 @@ function init(stack: HTMLElement) {
       const expected = (v.duration && isFinite(v.duration) ? v.duration / v.playbackRate : 3) * 1000 + 400;
       const timer = window.setTimeout(() => finish(true), expected);
 
-      // следующая сцена уже должна играть под переходом, чтобы стык был бесшовным
-      const nextLoop = loopOf(to);
-      if (nextLoop) {
-        nextLoop.currentTime = 0;
-        showLoop(to);
-      }
+      // Следующая сцена стартует только после перехода (в goTo), с первого кадра:
+      // последний кадр перехода = первый кадр её видео = poster следующей сцены.
       safePlay(v);
     });
 
@@ -193,27 +272,32 @@ function init(stack: HTMLElement) {
 
     textOut(from);
 
-    if (direction === 'forward' && !lite) {
+    // видеопереход есть только к соседней следующей сцене; прыжки по точкам — мягкой сменой
+    const adjacentForward = direction === 'forward' && to === from + 1;
+
+    if (adjacentForward && !lite) {
+      await finishLive(from); // переход начинается с последнего кадра оживления
       const played = await playTransitionVideo(from, to);
       if (played) {
-        // переход закончился на первом кадре следующей сцены
+        // переход закончился на первом кадре следующей сцены: показываем её и оживляем с нуля
         setActive(to);
+        startScene(to, 'play');
         const v = transitionOf(from);
         if (v) {
           v.classList.remove('is-playing');
           v.pause();
           v.currentTime = 0;
         }
-        stopLoop(from);
+        stopScene(from);
       } else {
-        await crossfade(from, to);
+        await crossfade(from, to, 'play');
         setActive(to);
-        stopLoop(from);
+        stopScene(from);
       }
     } else {
-      await crossfade(from, to);
+      await crossfade(from, to, direction === 'backward' ? 'frozen' : 'play');
       setActive(to);
-      stopLoop(from);
+      stopScene(from);
     }
 
     current = to;
@@ -225,7 +309,10 @@ function init(stack: HTMLElement) {
 
   const preloadAround = (i: number) => {
     loadVideo(transitionOf(i));
-    if (i + 1 <= last) loadVideo(loopOf(i + 1));
+    if (i + 1 <= last) {
+      loadVideo(loopOf(i + 1));
+      loadVideo(liveOf(i + 1));
+    }
     if (i - 1 >= 0) loadVideo(loopOf(i - 1));
   };
 
@@ -369,74 +456,108 @@ function init(stack: HTMLElement) {
   }
 
   // ---------- старт ----------
+  const first = scenes[0];
+  const intro = first.querySelector<HTMLVideoElement>('.scene__intro');
+  const introPoster = first.querySelector<HTMLImageElement>('.scene__intro-poster');
+  const shadeText = first.querySelector<HTMLElement>('[data-shade-text]');
+
+  /** Убрать закрытую шторку и надпись на ней: после открытия или если зашли сразу на другую сцену. */
+  const skipIntro = () => {
+    intro?.classList.add('is-hidden');
+    introPoster?.classList.add('is-hidden');
+    shadeText?.classList.add('is-hidden');
+    intro?.pause();
+  };
+
   const startFromHash = () => {
     const hash = location.hash.replace('#', '');
     if (!hash) return false;
     const idx = scenes.findIndex((s) => s.dataset.scene === hash);
     if (idx <= 0) return false;
+    skipIntro();
     scenes[0].classList.remove('is-active');
     scenes[idx].classList.add('is-active');
     current = idx;
     setActive(idx);
-    gsap.set(Array.from(textOf(idx).children), { opacity: 1, y: 0 });
-    showLoop(idx);
+    gsap.set(partsOf(idx), { opacity: 1, y: 0 });
+    startScene(idx, 'play');
     preloadAround(idx);
     stack.classList.add('has-moved');
     return true;
   };
 
+  /**
+   * Первая сцена: закрытая шторка с надписью → через INTRO_DELAY шторка сама поднимается
+   * (клип intro.mp4) → за окном плывут облака (петля) → выходит заголовок.
+   */
   const startIntro = () => {
-    const first = scenes[0];
-    const intro = first.querySelector<HTMLVideoElement>('.scene__intro');
-    const introPoster = first.querySelector<HTMLElement>('.scene__intro-poster');
-    const loop = loopOf(0);
-    gsap.set(Array.from(textOf(0).children), { opacity: 0 });
+    gsap.set(partsOf(0), { opacity: 0 });
 
-    const finishIntro = () => {
-      intro?.classList.add('is-hidden');
-      introPoster?.classList.add('is-hidden');
-      showLoop(0);
-      textIn(0, 0.1);
+    let finished = false;
+    const finish = (textDelay: number, dissolve = false) => {
+      if (finished) return;
+      finished = true;
+      showLoop(0); // петля облаков стартует под открытой шторкой
+      textIn(0, textDelay);
       preloadAround(0);
+      if (dissolve && intro && !reduced) {
+        // облака в петле плывут, поэтому последний кадр открытия мягко растворяем в неё
+        gsap.to([intro, introPoster].filter(Boolean), { opacity: 0, duration: 0.4, ease: 'power1.inOut', onComplete: skipIntro });
+      } else {
+        skipIntro();
+      }
+    };
+
+    // надпись уезжает вверх вместе со шторкой
+    const hideShadeText = (duration: number) => {
+      if (!shadeText) return;
+      gsap.to(shadeText, { opacity: 0, yPercent: -70, duration: reduced ? 0.01 : duration, ease: 'power2.in' });
     };
 
     if (lite || !intro) {
-      // облегчённый режим: сразу открытый иллюминатор
-      introPoster?.classList.add('is-hidden');
-      intro?.classList.add('is-hidden');
-      showLoop(0);
-      textIn(0, 0.4);
-      preloadAround(0);
+      // без видео (телефон, reduced motion): закрытый кадр с надписью, затем мягкая смена на открытый
+      if (!introPoster) return finish(0.4);
+      const open = () =>
+        window.setTimeout(() => {
+          hideShadeText(0.35);
+          gsap.to(introPoster, {
+            opacity: 0,
+            duration: reduced ? 0.01 : 0.6,
+            ease: 'power2.inOut',
+            onComplete: () => finish(0.05),
+          });
+        }, INTRO_DELAY);
+      if (introPoster.complete) open();
+      else {
+        introPoster.addEventListener('load', open, { once: true });
+        introPoster.addEventListener('error', () => finish(0.2), { once: true });
+      }
       return;
     }
 
-    let finished = false;
-    const once = () => {
-      if (finished) return;
-      finished = true;
-      finishIntro();
-    };
-
-    // шторка открывается сама через ~0.5 с после загрузки, без действий пользователя
     const play = () => {
-      if (loop) safePlay(loop); // loop уже крутится под интро, чтобы кадр совпал
-      intro.classList.add('is-visible');
-      intro.addEventListener('ended', once, { once: true });
-      intro.addEventListener('error', once, { once: true });
+      intro.defaultPlaybackRate = INTRO_RATE;
+      intro.playbackRate = INTRO_RATE;
+      intro.classList.add('is-visible'); // первый кадр клипа = закрытый кадр, подмены не видно
+      intro.addEventListener('ended', () => finish(0.1, true), { once: true });
+      intro.addEventListener('error', () => finish(0.1), { once: true });
       safePlay(intro);
-      // подстраховка, если видео не запустилось
-      window.setTimeout(once, 6000);
+      hideShadeText(0.45);
+      window.setTimeout(() => finish(0.1), 8000); // подстраховка, если ended не придёт
     };
 
-    const ready = () => window.setTimeout(play, 500);
+    const ready = () => window.setTimeout(play, INTRO_DELAY);
     if (intro.readyState >= 3) ready();
     else {
       intro.addEventListener('canplaythrough', ready, { once: true });
-      intro.addEventListener('error', once, { once: true });
-      // если сеть медленная — не ждём вечно
+      intro.addEventListener('error', () => finish(0.1), { once: true });
+      // медленная сеть: не держим посетителя перед закрытой шторкой
       window.setTimeout(() => {
-        if (!finished && intro.readyState < 3) once();
-      }, 5000);
+        if (!finished && intro.readyState < 3) {
+          hideShadeText(0.3);
+          finish(0.1);
+        }
+      }, 4000);
     }
   };
 

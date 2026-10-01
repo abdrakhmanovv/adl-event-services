@@ -10,6 +10,9 @@ tools/higgsfield/.env
 tools/higgsfield/out/
 tools/higgsfield/raw/
 
+# локальные разрешения Claude Code (у каждого свои)
+.claude/settings.local.json
+
 # исходники фото пользователя (в сайт попадают уменьшенные копии из public/ref/)
 photo/
 

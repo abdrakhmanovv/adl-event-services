@@ -57,6 +57,7 @@ async function generate(sceneId, name, prompt) {
 
 for (const scene of config.scenes) {
   if (opt.only && opt.only !== scene.id) continue;
+  if (!scene.keyframe) continue; // сцены на фото пользователя кадры не генерируют
   await generate(scene.id, 'keyframe', scene.keyframe);
   for (const [name, prompt] of Object.entries(scene.extraKeyframes ?? {})) {
     await generate(scene.id, name, prompt);
