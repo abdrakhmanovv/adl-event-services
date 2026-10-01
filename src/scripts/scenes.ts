@@ -1,9 +1,16 @@
 /**
  * Плеер сцен главной страницы.
- * Один жест прокрутки = один переход между эпизодами. Вперёд — видеопереход,
- * назад — быстрый кроссфейд. Видео играет и на телефонах; без видео (только фото и мягкая смена)
- * страница работает при «уменьшении движения» и режиме экономии трафика, а также если
- * телефон не дал запустить видео (например, iPhone в режиме энергосбережения).
+ *
+ * Один жест = один переход между эпизодами: прокрутка колесом или тачпадом (вниз или вбок),
+ * свайп пальцем вверх или влево — дальше; вниз или вправо — назад; стрелки на клавиатуре.
+ * Вперёд — видеопереход, назад — быстрая мягкая смена кадра.
+ *
+ * Каждый клип заранее скачивается целиком в память (blob). Телефоны, особенно iPhone, иначе
+ * подгружают видео по кусочку уже во время показа, и переход дёргается или стоит на первом кадре.
+ * Пока клип не готов, сцена спокойно стоит на своём кадре.
+ *
+ * Без видео (только фото и мягкая смена) страница работает при «уменьшении движения»,
+ * в режиме экономии трафика и если телефон не дал запустить видео (энергосбережение на iPhone).
  */
 import { gsap } from 'gsap';
 import Lenis from 'lenis';
@@ -25,8 +32,6 @@ function init(stack: HTMLElement) {
   // экономия трафика в браузере телефона (Chrome Lite mode и т.п.)
   const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true;
   const lite = reduced || saveData;
-  // сенсорные устройства: iPhone и многие Android не грузят видео заранее, пока его не запустить
-  const coarse = window.matchMedia('(pointer: coarse)').matches;
 
   // Lenis: плавная прокрутка светлой части. Пока мы внутри сцен — остановлен.
   const lenis = new Lenis({ lerp: 0.11, wheelMultiplier: 1 });
@@ -45,11 +50,21 @@ function init(stack: HTMLElement) {
   const INTRO_RATE = 2;
   // Скорость переходов между сценами
   const TRANSITION_RATE = 1.35;
+  // Сколько ждать загрузки перехода, прежде чем сдаться и сменить кадр мягко
+  const TRANSITION_LOAD_WAIT = 4000;
+  // Сколько сцена может постоять на своём кадре, ожидая загрузки оживления
+  const LIVE_LOAD_WAIT = 2000;
 
-  // ---------- вспомогательные ----------
+  const wait = (ms: number) => new Promise<void>((r) => window.setTimeout(r, ms));
+
+  // ---------- элементы сцен ----------
   const loopOf = (i: number) => scenes[i].querySelector<HTMLVideoElement>('.scene__loop');
   const transitionOf = (i: number) => scenes[i].querySelector<HTMLVideoElement>('.scene__transition');
+  const liveOf = (i: number) => scenes[i].querySelector<HTMLVideoElement>('.scene__live');
+  const endOf = (i: number) => scenes[i].querySelector<HTMLElement>('.scene__end');
   const textOf = (i: number) => scenes[i].querySelector<HTMLElement>('.scene__text')!;
+  /** Точка фокуса сцены по горизонтали (0…1): что видно на вертикальном экране телефона. */
+  const focusOf = (i: number) => Number(scenes[i].dataset.focus ?? 0.5);
 
   const safePlay = (v: HTMLVideoElement | null) => {
     if (!v) return;
@@ -57,69 +72,101 @@ function init(stack: HTMLElement) {
     if (p && typeof p.catch === 'function') p.catch(() => {});
   };
 
-  /**
-   * «Прогрев» на сенсорных устройствах: короткий запуск невидимого видео и сразу пауза.
-   * Так телефон начинает его скачивать, и к моменту перехода оно уже готово.
-   * dataset.inUse защищает видео, которое за это время успели запустить по-настоящему.
-   */
-  const prime = (v: HTMLVideoElement) => {
-    if (v.dataset.primed) return;
-    v.dataset.primed = '1';
-    const p = v.play();
-    if (p && typeof p.then === 'function') {
-      p.then(() => {
-        if (v.dataset.inUse) return;
-        v.pause();
-        try {
-          v.currentTime = 0;
-        } catch {
-          /* не страшно */
-        }
-      }).catch(() => {});
+  // ---------- загрузка клипов целиком в память ----------
+  //
+  // У видео два флажка:
+  //   dataset.inUse   — клип назначен к показу (ещё может ждать загрузки);
+  //   dataset.started — клип уже запущен: подменять ему источник нельзя, он перезапустится.
+  const blobUrls = new Map<string, Promise<string>>();
+
+  const sourceOf = (v: HTMLVideoElement) => v.querySelector('source')?.getAttribute('src') ?? v.getAttribute('src') ?? '';
+
+  const fetchBlobUrl = (src: string) => {
+    let p = blobUrls.get(src);
+    if (!p) {
+      p = fetch(src)
+        .then((r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.blob();
+        })
+        .then((b) => URL.createObjectURL(b));
+      blobUrls.set(src, p);
+      p.catch(() => blobUrls.delete(src)); // при сбое сети попробуем снова в следующий раз
     }
+    return p;
   };
 
-  const loadVideo = (v: HTMLVideoElement | null) => {
+  /** Скачать клип целиком и переключить видео на копию в памяти. true — клип готов. */
+  const ensureBlob = async (v: HTMLVideoElement): Promise<boolean> => {
+    if (v.dataset.blob) return true;
+    const src = sourceOf(v);
+    if (!src) return false;
+    const url = await fetchBlobUrl(src);
+    if (v.dataset.blob) return true;
+    if (v.dataset.started) return false; // уже играет из сети — не перебиваем
+    v.dataset.blob = '1';
+    v.src = url;
+    v.load();
+    return true;
+  };
+
+  /** Дождаться загрузки клипа, но не дольше ms. */
+  const readyWithin = (v: HTMLVideoElement, ms: number) =>
+    Promise.race([ensureBlob(v).catch(() => false), wait(ms).then(() => false)]);
+
+  /** Начать загрузку заранее (без ожидания). */
+  const preload = (v: HTMLVideoElement | null) => {
     if (!v || lite) return;
-    if (v.preload !== 'auto') {
-      v.preload = 'auto';
-      v.load();
-    }
-    if (coarse) prime(v);
+    ensureBlob(v).catch(() => {});
   };
 
-  /** Точка фокуса сцены по горизонтали (0…1): что видно на вертикальном экране телефона. */
-  const focusOf = (i: number) => Number(scenes[i].dataset.focus ?? 0.5);
+  const preloadAround = (i: number) => {
+    preload(loopOf(i));
+    preload(transitionOf(i));
+    if (i + 1 <= last) {
+      preload(loopOf(i + 1));
+      preload(liveOf(i + 1));
+      preload(transitionOf(i + 1));
+    }
+  };
 
+  /** Сбросить флажки показа: клип снова свободен. */
+  const release = (v: HTMLVideoElement) => {
+    delete v.dataset.inUse;
+    delete v.dataset.started;
+  };
+
+  // ---------- иллюминатор: бесконечная петля облаков ----------
   /**
-   * Запустить фоновую петлю сцены с первого кадра. Пока видео не выдало кадр, виден
-   * poster.webp — это тот же первый кадр, поэтому стык с переходом не заметен.
+   * Запустить петлю с первого кадра. Пока клип грузится, виден poster.webp —
+   * тот же первый кадр, поэтому ожидание незаметно.
    */
   const showLoop = (i: number) => {
     const v = loopOf(i);
     if (!v || lite) return;
     v.dataset.inUse = '1';
-    try {
-      v.currentTime = 0;
-    } catch {
-      /* метаданные ещё не загружены — видео и так начнёт с нуля */
-    }
-    v.addEventListener('playing', () => v.classList.add('is-visible'), { once: true });
-    safePlay(v);
+    readyWithin(v, LIVE_LOAD_WAIT).then(() => {
+      if (!v.dataset.inUse) return; // посетитель уже ушёл со сцены
+      v.dataset.started = '1';
+      try {
+        v.currentTime = 0;
+      } catch {
+        /* начнёт с нуля и так */
+      }
+      v.addEventListener('playing', () => v.classList.add('is-visible'), { once: true });
+      safePlay(v);
+    });
   };
 
   const stopLoop = (i: number) => {
     const v = loopOf(i);
     if (!v) return;
-    delete v.dataset.inUse;
+    release(v);
     v.pause();
     v.classList.remove('is-visible');
   };
 
   // ---------- сцены на фото: оживают один раз и замирают ----------
-  const liveOf = (i: number) => scenes[i].querySelector<HTMLVideoElement>('.scene__live');
-  const endOf = (i: number) => scenes[i].querySelector<HTMLElement>('.scene__end');
-
   /**
    * Показать сцену. play — оживление с начала, после конца видео остаётся на последнем кадре.
    * frozen — сразу последний кадр (возврат назад). У иллюминатора вместо этого петля облаков.
@@ -127,31 +174,38 @@ function init(stack: HTMLElement) {
   const startScene = (i: number, how: 'play' | 'frozen') => {
     const live = liveOf(i);
     if (!live) return showLoop(i);
-    if (lite) return; // на телефоне и при reduced motion — просто фото
+    if (lite) return; // без видео — просто фото
     const end = endOf(i);
     if (how === 'frozen') {
+      release(live);
       live.pause();
       live.classList.remove('is-visible');
       end?.classList.add('is-visible');
       return;
     }
     end?.classList.remove('is-visible');
+    live.classList.remove('is-visible');
     live.dataset.inUse = '1';
-    live.playbackRate = 1;
-    try {
-      live.currentTime = 0;
-    } catch {
-      /* ещё не загружено — начнёт с нуля */
-    }
-    live.addEventListener('playing', () => live.classList.add('is-visible'), { once: true });
-    safePlay(live);
+    // пока оживление грузится, виден poster.webp — это его первый кадр
+    readyWithin(live, LIVE_LOAD_WAIT).then(() => {
+      if (!live.dataset.inUse) return;
+      live.dataset.started = '1';
+      live.playbackRate = 1;
+      try {
+        live.currentTime = 0;
+      } catch {
+        /* начнёт с нуля и так */
+      }
+      live.addEventListener('playing', () => live.classList.add('is-visible'), { once: true });
+      safePlay(live);
+    });
   };
 
   const stopScene = (i: number) => {
     stopLoop(i);
     const live = liveOf(i);
     if (live) {
-      delete live.dataset.inUse;
+      release(live);
       live.pause();
       live.classList.remove('is-visible');
     }
@@ -162,22 +216,21 @@ function init(stack: HTMLElement) {
    * Если посетитель листает дальше, пока сцена ещё оживает, быстро доигрываем её до конца:
    * переход начинается именно с последнего кадра, так стыка не видно.
    */
-  const finishLive = (i: number) =>
-    new Promise<void>((resolve) => {
-      const live = liveOf(i);
-      if (!live || lite || live.ended || live.paused) return resolve();
-      const FAST = 6;
-      live.playbackRate = FAST;
-      const remaining = isFinite(live.duration) ? ((live.duration - live.currentTime) / FAST) * 1000 : 600;
-      const timer = window.setTimeout(done, remaining + 300);
-      function done() {
-        clearTimeout(timer);
-        live!.removeEventListener('ended', done);
-        resolve();
-      }
-      live.addEventListener('ended', done, { once: true });
-    });
+  const finishLive = async (i: number) => {
+    const live = liveOf(i);
+    if (!live || lite) return;
+    // оживление назначено, но ещё не стартовало — дождёмся старта, иначе кадр прыгнет
+    if (live.dataset.inUse && !live.dataset.started) {
+      await Promise.race([new Promise((r) => live.addEventListener('playing', r, { once: true })), wait(LIVE_LOAD_WAIT + 500)]);
+    }
+    if (live.ended || live.paused) return;
+    const FAST = 6;
+    live.playbackRate = FAST;
+    const remaining = isFinite(live.duration) ? ((live.duration - live.currentTime) / FAST) * 1000 : 600;
+    await Promise.race([new Promise((r) => live.addEventListener('ended', r, { once: true })), wait(remaining + 300)]);
+  };
 
+  // ---------- текст и состояние ----------
   const setActive = (i: number) => {
     scenes.forEach((s, k) => {
       const active = k === i;
@@ -238,7 +291,7 @@ function init(stack: HTMLElement) {
     document.documentElement.classList.add('scenes-captured');
   };
 
-  const release = () => {
+  const releaseScroll = () => {
     released = true;
     lenis.start();
     lenis.resize();
@@ -267,33 +320,55 @@ function init(stack: HTMLElement) {
   };
 
   /**
-   * Сыграть видеопереход. Показываем его только когда видео реально пошло: на телефоне оно
-   * может догружаться долю секунды. Если за START_WAIT не стартовало (нет сети, энергосбережение),
-   * отвечаем false — goTo сделает мягкую смену кадра.
-   * Во время перехода кадр плавно смещается от фокуса этой сцены к фокусу следующей, поэтому
-   * на вертикальном экране стык с новой сценой не прыгает.
+   * Сыграть видеопереход. Сначала клип должен оказаться в памяти целиком: пока он грузится,
+   * сцена стоит на своём кадре, а счётчик сцен мягко пульсирует. Если за TRANSITION_LOAD_WAIT
+   * не загрузился или видео не стартовало — false, и goTo сменит кадр мягко.
+   *
+   * На вертикальном экране кадр сдвигается от фокуса этой сцены к фокусу следующей. Сдвиг
+   * привязан ко времени самого видео и идёт во второй половине движения: если видео
+   * притормозит, сдвиг тоже остановится и не будет выглядеть как поворот на месте.
    */
   const START_WAIT = 1500;
-  const playTransitionVideo = (from: number, to: number) =>
-    new Promise<boolean>((resolve) => {
-      const v = transitionOf(from);
-      if (!v || lite) return resolve(false);
+  const playTransitionVideo = async (from: number, to: number): Promise<boolean> => {
+    const v = transitionOf(from);
+    if (!v || lite) return false;
 
+    if (!v.dataset.blob) {
+      stack.classList.add('is-loading');
+      const ok = await readyWithin(v, TRANSITION_LOAD_WAIT);
+      stack.classList.remove('is-loading');
+      if (!ok && !v.dataset.blob) return false;
+    }
+
+    return new Promise<boolean>((resolve) => {
+      const f0 = focusOf(from);
+      const f1 = focusOf(to);
       let done = false;
       let started = false;
       let endTimer = 0;
+
+      const pan = () => {
+        const d = v.duration;
+        if (!d || !isFinite(d)) return;
+        const t = Math.min(1, Math.max(0, (v.currentTime / d - 0.25) / 0.65));
+        const e = t * t * (3 - 2 * t);
+        v.style.objectPosition = `${(f0 + (f1 - f0) * e) * 100}% 50%`;
+      };
+
       const finish = (ok: boolean) => {
         if (done) return;
         done = true;
         v.removeEventListener('playing', onPlaying);
         v.removeEventListener('ended', onEnded);
         v.removeEventListener('error', onError);
+        gsap.ticker.remove(pan);
         clearTimeout(startTimer);
         clearTimeout(endTimer);
         if (!ok) {
           v.pause();
           v.classList.remove('is-playing');
-          delete v.dataset.inUse;
+          v.style.objectPosition = '';
+          release(v);
         }
         resolve(ok);
       };
@@ -303,27 +378,24 @@ function init(stack: HTMLElement) {
         if (started) return;
         started = true;
         v.classList.add('is-playing');
-        const rate = v.playbackRate || TRANSITION_RATE;
-        const seconds = v.duration && isFinite(v.duration) ? v.duration / rate : 3;
-        gsap.fromTo(
-          v,
-          { objectPosition: `${focusOf(from) * 100}% 50%` },
-          { objectPosition: `${focusOf(to) * 100}% 50%`, duration: seconds, ease: 'power1.inOut' },
-        );
-        // подстраховка, если ended не придёт
-        endTimer = window.setTimeout(() => finish(true), seconds * 1000 + 400);
+        const seconds = v.duration && isFinite(v.duration) ? v.duration / (v.playbackRate || TRANSITION_RATE) : 3;
+        // подстраховка, если ended не придёт (держим запас на возможные подтормаживания)
+        endTimer = window.setTimeout(() => finish(true), seconds * 1000 + 1500);
       };
 
       v.dataset.inUse = '1';
+      v.dataset.started = '1';
+      v.style.objectPosition = `${f0 * 100}% 50%`;
       try {
         v.currentTime = 0;
       } catch {
-        /* ещё не загружено — начнёт с нуля */
+        /* начнёт с нуля и так */
       }
       v.playbackRate = TRANSITION_RATE;
       v.addEventListener('playing', onPlaying);
       v.addEventListener('ended', onEnded);
       v.addEventListener('error', onError);
+      if (f0 !== f1) gsap.ticker.add(pan);
       const startTimer = window.setTimeout(() => {
         if (!started) finish(false);
       }, START_WAIT);
@@ -332,6 +404,7 @@ function init(stack: HTMLElement) {
       // последний кадр перехода = первый кадр её видео = poster следующей сцены.
       safePlay(v);
     });
+  };
 
   const goTo = async (to: number, direction: 'forward' | 'backward' | 'jump') => {
     if (busy || to === current || to < 0 || to > last) return;
@@ -356,8 +429,8 @@ function init(stack: HTMLElement) {
           v.classList.remove('is-playing');
           v.pause();
           v.currentTime = 0;
-          delete v.dataset.inUse;
-          gsap.set(v, { clearProps: 'objectPosition' });
+          v.style.objectPosition = '';
+          release(v);
         }
         stopScene(from);
       } else {
@@ -378,19 +451,10 @@ function init(stack: HTMLElement) {
     busy = false;
   };
 
-  const preloadAround = (i: number) => {
-    loadVideo(transitionOf(i));
-    if (i + 1 <= last) {
-      loadVideo(loopOf(i + 1));
-      loadVideo(liveOf(i + 1));
-    }
-    if (i - 1 >= 0) loadVideo(loopOf(i - 1));
-  };
-
   const next = () => {
     if (busy) return;
     if (current === last) {
-      if (!released) release();
+      if (!released) releaseScroll();
       return;
     }
     goTo(current + 1, 'forward');
@@ -404,6 +468,7 @@ function init(stack: HTMLElement) {
   // ---------- ввод ----------
   const inCooldown = () => performance.now() - lastActionAt < COOLDOWN;
 
+  // колесо и тачпад: вниз или вправо — дальше, вверх или влево — назад
   let wheelAccum = 0;
   window.addEventListener(
     'wheel',
@@ -422,7 +487,7 @@ function init(stack: HTMLElement) {
         wheelAccum = 0;
         return;
       }
-      wheelAccum += e.deltaY;
+      wheelAccum += Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
       if (Math.abs(wheelAccum) < 12) return;
       const dir = wheelAccum > 0 ? 1 : -1;
       wheelAccum = 0;
@@ -431,10 +496,14 @@ function init(stack: HTMLElement) {
     { passive: false },
   );
 
+  // свайп: палец вверх или влево — дальше, вниз или вправо — назад
+  const SWIPE = 40;
+  let touchX: number | null = null;
   let touchY: number | null = null;
   window.addEventListener(
     'touchstart',
     (e) => {
+      touchX = e.touches[0]?.clientX ?? null;
       touchY = e.touches[0]?.clientY ?? null;
     },
     { passive: true },
@@ -447,19 +516,21 @@ function init(stack: HTMLElement) {
     { passive: false },
   );
   window.addEventListener('touchend', (e) => {
-    if (touchY === null) return;
-    const y = e.changedTouches[0]?.clientY ?? touchY;
-    const dy = touchY - y;
-    touchY = null;
+    if (touchX === null || touchY === null) return;
+    const t = e.changedTouches[0];
+    const dx = touchX - (t?.clientX ?? touchX); // > 0: палец ушёл влево
+    const dy = touchY - (t?.clientY ?? touchY); // > 0: палец ушёл вверх
+    touchX = touchY = null;
     if (released) {
-      if (window.scrollY <= 1 && dy < -40 && !busy) {
+      if (window.scrollY <= 1 && dy < -SWIPE && Math.abs(dy) > Math.abs(dx) && !busy) {
         capture();
         lastActionAt = performance.now();
       }
       return;
     }
-    if (busy || inCooldown() || Math.abs(dy) < 40) return;
-    dy > 0 ? next() : prev();
+    const amount = Math.abs(dx) > Math.abs(dy) ? dx : dy;
+    if (busy || inCooldown() || Math.abs(amount) < SWIPE) return;
+    amount > 0 ? next() : prev();
   });
 
   window.addEventListener('keydown', (e) => {
@@ -468,12 +539,14 @@ function init(stack: HTMLElement) {
     if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
     switch (e.key) {
       case 'ArrowDown':
+      case 'ArrowRight':
       case 'PageDown':
       case ' ':
         e.preventDefault();
         next();
         break;
       case 'ArrowUp':
+      case 'ArrowLeft':
       case 'PageUp':
         e.preventDefault();
         prev();
@@ -519,10 +592,9 @@ function init(stack: HTMLElement) {
 
   // Шапка становится светлой, когда сцены ушли из вида
   if (header && 'IntersectionObserver' in window) {
-    const io = new IntersectionObserver(
-      ([entry]) => header.classList.toggle('is-light', !entry.isIntersecting),
-      { threshold: 0.02 },
-    );
+    const io = new IntersectionObserver(([entry]) => header.classList.toggle('is-light', !entry.isIntersecting), {
+      threshold: 0.02,
+    });
     io.observe(stack);
   }
 
@@ -570,7 +642,6 @@ function init(stack: HTMLElement) {
       finished = true;
       showLoop(0); // петля облаков стартует под открытой шторкой
       textIn(0, textDelay);
-      preloadAround(0);
       if (dissolve && intro && !reduced) {
         // облака в петле плывут, поэтому последний кадр открытия мягко растворяем в неё
         gsap.to([intro, introPoster].filter(Boolean), { opacity: 0, duration: 0.4, ease: 'power1.inOut', onComplete: skipIntro });
@@ -590,6 +661,7 @@ function init(stack: HTMLElement) {
     const softOpen = () => {
       if (softOpened || finished) return;
       softOpened = true;
+      intro?.pause();
       if (!introPoster) return finish(0.4);
       hideShadeText(0.35);
       gsap.to(introPoster, {
@@ -600,23 +672,16 @@ function init(stack: HTMLElement) {
       });
     };
 
-    if (lite || !intro) {
-      // без видео (reduced motion, экономия трафика): закрытый кадр с надписью, затем мягкая смена
-      if (!introPoster) return finish(0.4);
-      const open = () => window.setTimeout(softOpen, INTRO_DELAY);
-      if (introPoster.complete) open();
-      else {
-        introPoster.addEventListener('load', open, { once: true });
-        introPoster.addEventListener('error', () => finish(0.2), { once: true });
-      }
-      return;
-    }
-
-    const play = () => {
+    const play = async () => {
+      if (finished || softOpened) return;
+      if (!intro) return softOpen();
+      // клип открытия маленький (около 200 КБ); ждём его, пока на экране закрытая шторка с надписью
+      await readyWithin(intro, 2500);
       if (finished || softOpened) return;
       intro.defaultPlaybackRate = INTRO_RATE;
       intro.playbackRate = INTRO_RATE;
       intro.dataset.inUse = '1';
+      intro.dataset.started = '1';
       let started = false;
       // показываем клип, только когда он реально пошёл: первый кадр = закрытый кадр, подмены не видно
       intro.addEventListener(
@@ -638,16 +703,21 @@ function init(stack: HTMLElement) {
       window.setTimeout(() => finish(0.1), 9000); // подстраховка, если ended не придёт
     };
 
-    const ready = () => window.setTimeout(play, INTRO_DELAY);
-    // телефоны не грузят видео заранее, поэтому там не ждём готовности, а сразу запускаем
-    if (intro.readyState >= 3 || coarse) ready();
+    // отсчёт INTRO_DELAY идёт с момента, когда закрытая шторка с надписью уже на экране
+    const kick = () => window.setTimeout(lite ? softOpen : play, INTRO_DELAY);
+    if (!introPoster || introPoster.complete) kick();
     else {
-      intro.addEventListener('canplaythrough', ready, { once: true });
-      intro.addEventListener('error', softOpen, { once: true });
-      // медленная сеть: не держим посетителя перед закрытой шторкой
-      window.setTimeout(() => {
-        if (!finished && intro.readyState < 3) softOpen();
-      }, 4000);
+      introPoster.addEventListener('load', kick, { once: true });
+      introPoster.addEventListener('error', kick, { once: true });
+    }
+
+    // клип открытия грузим первым, следом всё для первого перехода
+    if (!lite && intro) {
+      ensureBlob(intro)
+        .catch(() => {})
+        .finally(() => preloadAround(0));
+    } else {
+      preloadAround(0);
     }
   };
 
@@ -657,6 +727,6 @@ function init(stack: HTMLElement) {
 
   // Если открыли главную с #form или #content — отдать обычную прокрутку
   if (location.hash === '#form' || location.hash === '#content') {
-    release();
+    releaseScroll();
   }
 }

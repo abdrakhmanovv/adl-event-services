@@ -36,7 +36,7 @@ const has = (id: string, file: string) => existsSync(join(process.cwd(), 'public
               {i === 0 && has(s.media, 'intro.mp4') && (
                 <>
                   <img class="scene__intro-poster" src={media(s.media, 'intro-poster.webp')} alt="" decoding="async" />
-                  <video class="scene__intro" muted playsinline preload="auto" aria-hidden="true">
+                  <video class="scene__intro" muted playsinline preload="none" aria-hidden="true">
                     <source src={media(s.media, 'intro.mp4')} type="video/mp4" />
                   </video>
                 </>
@@ -49,7 +49,7 @@ const has = (id: string, file: string) => existsSync(join(process.cwd(), 'public
               )}
               {/* иллюминатор: бесконечная петля облаков */}
               {has(s.media, 'loop.mp4') && (
-                <video class="scene__loop" muted loop playsinline preload={i === 0 ? 'auto' : 'none'} aria-hidden="true">
+                <video class="scene__loop" muted loop playsinline preload="none" aria-hidden="true">
                   <source src={media(s.media, 'loop.mp4')} type="video/mp4" />
                 </video>
               )}
@@ -139,7 +139,8 @@ const has = (id: string, file: string) => existsSync(join(process.cwd(), 'public
     <div class="scenes__footer">
       <button type="button" class="scenes__hint" data-next>
         <Icon name="arrow-down" size={18} />
-        <span>Листайте, чтобы пройти путь гостя</span>
+        <span class="scenes__hint-mouse">Листайте, чтобы пройти путь гостя</span>
+        <span class="scenes__hint-touch">Листайте вверх или влево</span>
       </button>
       <span class="scenes__counter" aria-live="polite">
         <span data-counter-current>1</span> / {scenes.length}
@@ -600,6 +601,35 @@ const has = (id: string, file: string) => existsSync(join(process.cwd(), 'public
     color: var(--cream-70);
     letter-spacing: 0.05em;
     font-variant-numeric: tabular-nums;
+  }
+
+  /* переход ещё догружается: счётчик мягко пульсирует, сцена стоит на своём кадре */
+  .scenes.is-loading .scenes__counter {
+    animation: loading-pulse 0.9s ease-in-out infinite;
+  }
+
+  @keyframes loading-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.3;
+    }
+  }
+
+  /* подсказка: мышь листает вниз, палец — вверх или в сторону */
+  .scenes__hint-touch {
+    display: none;
+  }
+
+  @media (pointer: coarse) {
+    .scenes__hint-mouse {
+      display: none;
+    }
+    .scenes__hint-touch {
+      display: inline;
+    }
   }
 
   @keyframes nudge {
