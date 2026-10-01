@@ -1,93 +1,52 @@
 ---
 /**
- * Знак ADL: щит с монограммой, по мотивам логотипа компании (синий щит, золото).
- * Векторный, поэтому одинаково читается на тёмной главной и светлых страницах.
+ * Логотип ADL Event Services: шрифтовой знак без значка.
+ * Крупное «ADL» и рядом в две строки «Event Services» через тонкую вертикальную черту.
+ * Цвет наследуется от родителя, поэтому одинаково работает на тёмной главной и светлых страницах.
  */
 interface Props {
+  /** высота знака в пикселях, примерно высота строки «ADL» */
   size?: number;
-  /** показывать ли текст рядом со знаком */
-  text?: boolean;
   class?: string;
 }
-const { size = 34, text = true, class: className = '' } = Astro.props;
+const { size = 34, class: className = '' } = Astro.props;
 ---
 
-<span class:list={['logo-mark', className]}>
-  <svg width={size} height={size} viewBox="0 0 40 44" aria-hidden="true" focusable="false">
-    <path
-      d="M20 2.5 35 8.2v13.3c0 9.9-6.4 16.4-15 20-8.6-3.6-15-10.1-15-20V8.2L20 2.5Z"
-      fill="var(--logo-shield, #1f2e55)"
-      stroke="var(--logo-gold, #c9a24b)"
-      stroke-width="1.6"
-      stroke-linejoin="round"
-    />
-    <path
-      d="M20 6.2 31.5 10.6v10.9c0 7.9-5 13.2-11.5 16.2-6.5-3-11.5-8.3-11.5-16.2V10.6L20 6.2Z"
-      fill="none"
-      stroke="var(--logo-gold, #c9a24b)"
-      stroke-width="0.6"
-      opacity="0.7"
-    />
-    <text
-      x="20"
-      y="26.5"
-      text-anchor="middle"
-      font-family="Unbounded, 'Golos Text', sans-serif"
-      font-weight="600"
-      font-size="10.5"
-      letter-spacing="0.02"
-      fill="var(--logo-gold, #c9a24b)">ADL</text
-    >
-  </svg>
-  {
-    text && (
-      <span class="logo-mark__text">
-        <span class="logo-mark__name">ADL</span>
-        <span class="logo-mark__sub">Event Services</span>
-      </span>
-    )
-  }
+<span class:list={['logo-mark', className]} style={`--logo-size: ${size}px`}>
+  <span class="logo-mark__name">ADL</span>
+  <span class="logo-mark__sub">
+    <span>Event</span>
+    <span>Services</span>
+  </span>
 </span>
 
 <style>
   .logo-mark {
     display: inline-flex;
     align-items: center;
-    gap: 10px;
-    --logo-shield: var(--accent);
-    --logo-gold: var(--gold);
-  }
-
-  .logo-mark svg {
-    flex: none;
-  }
-
-  .logo-mark__text {
-    display: inline-flex;
-    align-items: baseline;
-    gap: 7px;
+    gap: calc(var(--logo-size) * 0.3);
+    line-height: 1;
     white-space: nowrap;
+    color: inherit;
   }
 
   .logo-mark__name {
     font-family: var(--font-display);
     font-weight: 600;
-    font-size: 1.3rem;
-    letter-spacing: 0.02em;
-    line-height: 1;
+    font-size: calc(var(--logo-size) * 0.72);
+    letter-spacing: -0.02em;
   }
 
   .logo-mark__sub {
+    display: grid;
+    gap: 1px;
+    padding-left: calc(var(--logo-size) * 0.3);
+    border-left: 1px solid currentColor;
+    font-family: var(--font-text);
     font-weight: 500;
-    font-size: 0.92rem;
+    font-size: calc(var(--logo-size) * 0.33);
+    line-height: 1.05;
+    letter-spacing: 0.01em;
     opacity: 0.85;
-  }
-
-  /* на тёмном фоне щит чуть светлее, чтобы читался контур */
-  :global(.theme-night) .logo-mark,
-  :global(.site-header[data-variant='night']:not(.is-light)) .logo-mark,
-  :global(.footer) .logo-mark {
-    --logo-shield: #2a3b66;
-    --logo-gold: #d4ad55;
   }
 </style>

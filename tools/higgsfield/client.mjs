@@ -64,18 +64,24 @@ function headers() {
 /** Отправить задачу. Возвращает { request_id, status_url, cancel_url, status }. */
 export async function submit(endpoint, body) {
   const url = endpoint.startsWith('http') ? endpoint : `${API}${endpoint}`;
-  const res = await fetchRetry(url, { method: 'POST', headers: headers(), body: JSON.stringify(body) });
-  const text = await res.text();
-  let json;
-  try {
-    json = JSON.parse(text);
-  } catch {
-    json = { raw: text };
-  }
-  if (!res.ok) {
+  // Лимит одновременных задач аккаунта: при «Maximum number of concurrent requests» ждём и пробуем снова.
+  for (let attempt = 1; ; attempt++) {
+    const res = await fetchRetry(url, { method: 'POST', headers: headers(), body: JSON.stringify(body) });
+    const text = await res.text();
+    let json;
+    try {
+      json = JSON.parse(text);
+    } catch {
+      json = { raw: text };
+    }
+    if (res.ok) return json;
+    if (res.status === 400 && /concurrent/i.test(text) && attempt < 40) {
+      process.stdout.write(`  занят лимит одновременных задач, жду 20 с (попытка ${attempt})\n`);
+      await new Promise((r) => setTimeout(r, 20000));
+      continue;
+    }
     throw new Error(`Higgsfield ${res.status} на ${endpoint}: ${text.slice(0, 600)}`);
   }
-  return json;
 }
 
 /** Ждать завершения задачи по status_url. */

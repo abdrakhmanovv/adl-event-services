@@ -13,14 +13,11 @@
   --line: #d9dfe3;
   --line-strong: #b9c2c8;
 
-  /* Акцент — тёмно-синий из логотипа ADL; золото только для знака и редких деталей */
+  /* Акцент — глубокий тёмно-синий */
   --accent: #1f2e55;
   --accent-strong: #16223f;
   --accent-soft: #e9edf6;
   --accent-ink: #14203d;
-  --gold: #b8923a;
-  --gold-strong: #8f6f27;
-  --gold-soft: #f5efe0;
 
   /* Цвет: ночная тема (главная, сцены) */
   --night: #0f0c0a;

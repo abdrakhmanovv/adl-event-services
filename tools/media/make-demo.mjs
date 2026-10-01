@@ -1,78 +1,86 @@
 /**
- * Ролик-превью начала главной так, как его увидит посетитель: шторка с надписью,
- * открытие, облака, переход в аэропорт, оживление, переход в трансфер, оживление.
+ * Ролик-превью главной так, как её увидит посетитель: шторка с надписью, открытие,
+ * облака, затем по очереди все сцены (оживление и короткая пауза) и переходы между ними.
  * Скорости как на сайте: открытие ×2, переходы ×1.35. Текст сцен наложен поверх.
  *
  *   node tools/media/make-demo.mjs
- * Результат: tools/higgsfield/out/demo-start.mp4
+ * Результат: tools/higgsfield/out/demo-full.mp4
  */
 import { execFileSync } from 'node:child_process';
-import { writeFileSync } from 'node:fs';
+import { existsSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const ffmpeg = process.env.FFMPEG || 'ffmpeg';
 const m = (p) => join(process.cwd(), 'public', 'media', 'scenes', p);
-const out = join(process.cwd(), 'tools', 'higgsfield', 'out', 'demo-start.mp4');
+const out = join(process.cwd(), 'tools', 'higgsfield', 'out', 'demo-full.mp4');
 
 // путь к шрифту и текстовым файлам — только ASCII, с экранированием двоеточия для ffmpeg
 const font = 'C\\:/Windows/Fonts/arialbd.ttf';
 const fontReg = 'C\\:/Windows/Fonts/arial.ttf';
-const textFile = (name, text) => {
-  const p = join(tmpdir(), `adl-demo-${name}.txt`);
+let n = 0;
+const textFile = (text) => {
+  const p = join(tmpdir(), `adl-demo-${n++}.txt`);
   writeFileSync(p, text, 'utf8');
   return p.replaceAll('\\', '/').replace(/^([A-Za-z]):/, '$1\\:');
 };
 
 const base = 'scale=1280:720,fps=24,format=yuv420p,setsar=1';
 const shadow = 'shadowcolor=black@0.55:shadowx=0:shadowy=2';
-const label = (file, size, y, f = font) =>
-  `drawtext=fontfile='${f}':textfile='${file}':fontcolor=white:fontsize=${size}:x=(w-text_w)/2+0.009*w:y=${y}:${shadow}`;
 // как на сайте: затемнение снизу под текстом сцены
 const fade = 'drawbox=x=0:y=ih-300:w=iw:h=300:color=black@0.28:t=fill,drawbox=x=0:y=ih-200:w=iw:h=200:color=black@0.3:t=fill';
-const title = (file, sub) =>
-  `${fade},drawtext=fontfile='${font}':textfile='${file}':fontcolor=white:fontsize=46:x=80:y=h-230:${shadow},` +
-  `drawtext=fontfile='${fontReg}':textfile='${sub}':fontcolor=white@0.85:fontsize=22:x=80:y=h-160:${shadow}`;
+const title = (head, sub) =>
+  `${fade},drawtext=fontfile='${font}':textfile='${textFile(head)}':fontcolor=white:fontsize=46:x=80:y=h-230:${shadow},` +
+  `drawtext=fontfile='${fontReg}':textfile='${textFile(sub)}':fontcolor=white@0.85:fontsize=22:x=80:y=h-160:${shadow}`;
 
-const t = {
-  shadeLabel: textFile('shade-label', 'ADL Event Services'),
-  shadeTitle: textFile('shade-title', 'Добро пожаловать\nв Казахстан'),
-  heroA: textFile('hero-a', 'Вы занимаетесь\nбизнесом.'),
-  heroB: textFile('hero-b', 'Мы занимаемся\nорганизацией\nвашего\nпребывания.'),
-  airport: textFile('airport', 'Встречаем в зале прилёта'),
-  airportSub: textFile('airport-sub', 'Сопровождающий с табличкой, помощь с багажом, автомобиль у выхода.'),
-  transfer: textFile('transfer', 'Довозим вовремя каждый день'),
-  transferSub: textFile('transfer-sub', 'Аэропорт, отель, EXPO, деловые встречи.'),
-};
-
-const inputs = [
-  '-loop', '1', '-t', '1.5', '-i', m('window/intro-poster.webp'), // 0: закрытая шторка 1,5 с
-  '-i', m('window/intro.mp4'), // 1
-  '-i', m('window/loop.mp4'), // 2
-  '-i', m('window/transition.mp4'), // 3
-  '-i', m('airport/live.mp4'), // 4
-  '-i', m('airport/transition.mp4'), // 5
-  '-i', m('transfer/live.mp4'), // 6
+const scenes = [
+  { id: 'airport', head: 'Встречаем в зале прилёта', sub: 'Сопровождающий с табличкой, помощь с багажом, автомобиль у выхода.' },
+  { id: 'transfer', head: 'Довозим вовремя каждый день', sub: 'Аэропорт, отель, EXPO, деловые встречи.' },
+  { id: 'hotel', head: 'Номера забронированы заранее', sub: 'Отели рядом с площадкой, единый счёт, координатор на ресепшн.' },
+  { id: 'expo', head: 'Оборудование на стенде к нужному часу', sub: 'Доставка, погрузка, перенос и вывоз оборудования.' },
+  { id: 'evening', head: 'После деловой программы', sub: 'Ужины, встречи, знакомство с городом.' },
+  { id: 'departure', head: 'Провожаем в аэропорт', sub: 'Обратный трансфер и закрывающие документы. Один координатор от прилёта до вылета.' },
 ];
 
-const heroText =
-  `drawtext=fontfile='${font}':textfile='${t.heroA}':fontcolor=white:fontsize=50:line_spacing=-4:x=80:y=90:${shadow},` +
-  `drawtext=fontfile='${font}':textfile='${t.heroB}':fontcolor=white:fontsize=50:line_spacing=-4:x=w-text_w-80:y=h-text_h-170:${shadow}`;
+const inputs = [];
+const chains = [];
+const labels = [];
+const add = (args, filter) => {
+  const i = inputs.filter((a) => a === '-i').length;
+  inputs.push(...args);
+  const label = `s${labels.length}`;
+  chains.push(`[${i}:v]${filter}[${label}]`);
+  labels.push(`[${label}]`);
+};
 
-const graph = [
-  `[0:v]${base},${label(t.shadeLabel, 15, 'h*0.40', fontReg)},${label(t.shadeTitle, 30, 'h*0.44')}[a]`,
-  `[1:v]setpts=PTS/2,${base}[b]`,
-  `[2:v]trim=0:3.5,setpts=PTS-STARTPTS,${base},${heroText}[c]`,
-  `[3:v]setpts=PTS/1.35,${base}[d]`,
-  `[4:v]${base},tpad=stop_mode=clone:stop_duration=1.2,${title(t.airport, t.airportSub)}[e]`,
-  `[5:v]setpts=PTS/1.35,${base}[f]`,
-  `[6:v]${base},tpad=stop_mode=clone:stop_duration=1.5,${title(t.transfer, t.transferSub)}[g]`,
-  `[a][b][c][d][e][f][g]concat=n=7:v=1:a=0[out]`,
-].join(';');
+// иллюминатор
+const shadeLabel = textFile('ADL Event Services');
+const shadeTitle = textFile('Добро пожаловать\nв Казахстан');
+add(
+  ['-loop', '1', '-t', '1.5', '-i', m('window/intro-poster.webp')],
+  `${base},drawtext=fontfile='${fontReg}':textfile='${shadeLabel}':fontcolor=white:fontsize=15:x=(w-text_w)/2+0.009*w:y=h*0.40:${shadow},` +
+    `drawtext=fontfile='${font}':textfile='${shadeTitle}':fontcolor=white:fontsize=30:x=(w-text_w)/2+0.009*w:y=h*0.44:${shadow}`,
+);
+add(['-i', m('window/intro.mp4')], `setpts=PTS/2,${base}`);
+add(
+  ['-i', m('window/loop.mp4')],
+  `trim=0:3.5,setpts=PTS-STARTPTS,${base},` +
+    `drawtext=fontfile='${font}':textfile='${textFile('Вы занимаетесь\nбизнесом.')}':fontcolor=white:fontsize=50:line_spacing=-4:x=80:y=90:${shadow},` +
+    `drawtext=fontfile='${font}':textfile='${textFile('Мы занимаемся\nорганизацией\nвашего\nпребывания.')}':fontcolor=white:fontsize=50:line_spacing=-4:x=w-text_w-80:y=h-text_h-170:${shadow}`,
+);
+add(['-i', m('window/transition.mp4')], `setpts=PTS/1.35,${base}`);
 
+// сцены на фото
+for (const s of scenes) {
+  if (!existsSync(m(`${s.id}/live.mp4`))) continue;
+  add(['-i', m(`${s.id}/live.mp4`)], `${base},tpad=stop_mode=clone:stop_duration=1.2,${title(s.head, s.sub)}`);
+  if (existsSync(m(`${s.id}/transition.mp4`))) add(['-i', m(`${s.id}/transition.mp4`)], `setpts=PTS/1.35,${base}`);
+}
+
+const graph = `${chains.join(';')};${labels.join('')}concat=n=${labels.length}:v=1:a=0[out]`;
 execFileSync(
   ffmpeg,
-  ['-y', '-loglevel', 'error', ...inputs, '-filter_complex', graph, '-map', '[out]', '-c:v', 'libx264', '-crf', '21', '-preset', 'medium', '-movflags', '+faststart', out],
+  ['-y', '-loglevel', 'error', ...inputs, '-filter_complex', graph, '-map', '[out]', '-c:v', 'libx264', '-crf', '22', '-preset', 'medium', '-movflags', '+faststart', out],
   { stdio: 'inherit' },
 );
 console.log(`✓ ${out}`);

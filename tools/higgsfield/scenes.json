@@ -34,11 +34,11 @@
       "clean": "Keep this photo exactly as it is: the same airport hall, the same people in the same poses and places, the same camera angle, framing, lighting and colours. Only remove all text, letters, numbers and logos everywhere in the image: the red shop sign above the store becomes a plain red sign with no lettering, the posters and screens become plain with no text, the small signs show no text. The white sign held by the man in the foreground stays completely blank.",
       "live": {
         "duration": 5,
-        "prompt": "The four business travellers walk toward the camera pulling their suitcases and smile; the greeter in the navy suit in the foreground raises the blank white sign a little higher in greeting; reflections glide on the polished floor; the camera stays still with a very slow gentle push-in. Natural realistic motion, the same people, no new people, no text"
+        "prompt": "The four business travellers walk toward the camera pulling their suitcases and smile; the greeter in the navy suit in the foreground raises the blank white sign a little higher in greeting; reflections glide on the polished floor. The camera is completely static, no zoom, no push-in. The red shop sign on the left stays a plain solid red panel with no letters, no characters, no symbols; all signs and the white card stay completely blank. Natural realistic motion, the same people, no new people, no text, no writing of any kind"
       },
       "transition": {
         "duration": 4,
-        "prompt": "Fast push-in toward the blank white sign in the greeter's hands until the white fills the entire frame; the white turns into a bright sky with soft clouds; the camera tilts down to reveal the airport forecourt with the green-domed terminal and a black Mercedes sedan with its rear door open, a chauffeur in a waistcoat and a woman in a beige suit beside it. One continuous fast camera move, no cuts, no text"
+        "prompt": "Fast push-in toward the blank white sign in the greeter's hands until the white fills the entire frame; the white turns into a bright sky with soft clouds; the camera tilts down to reveal the airport forecourt with the green-domed terminal and a black Mercedes sedan with its rear door open, a chauffeur in a waistcoat and a woman in a beige suit beside it. One continuous fast camera move, no cuts. The red shop sign stays a plain solid red panel and the white card stays blank: no letters, no characters, no symbols, no text, no writing of any kind"
       }
     },
     {
@@ -65,7 +65,7 @@
       },
       "transition": {
         "duration": 4,
-        "prompt": "The camera moves down to the golden suitcase on wheels and orbits behind it in a smooth fast arc; as the camera comes around, the suitcase becomes a wooden shipping crate on a trolley in a bright exhibition hall with industrial machinery stands, white booths and workers in dark uniforms. One continuous orbit move, no cuts, no text"
+        "prompt": "The camera swoops down to floor level toward the golden hard-shell suitcase until its ribbed golden surface fills the whole frame, then the camera circles around behind the suitcase in a fast smooth arc; as it comes around, the golden ribbed surface turns into the wooden slats of a shipping crate on a trolley, and the camera rises and pulls back to reveal a bright exhibition hall with industrial machinery, a white booth, workers in dark uniforms moving crates and a man in a suit holding a tablet. One continuous physical camera move, no cuts, no dissolve, no crossfade, no new objects on the counter, no text"
       }
     },
     {
