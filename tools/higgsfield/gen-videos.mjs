@@ -79,12 +79,15 @@ for (let i = 0; i < config.scenes.length; i++) {
 
   if ((what === 'all' || what === 'loops') && scene.loop) {
     const url = frameUrl(scene.id);
-    await generate(scene.id, 'loop', {
+    // mode "drift": свободное движение в одну сторону (облака), шов петли потом закрывает postprocess.
+    // По умолчанию первый кадр = последний: люди и свет слегка двигаются и возвращаются.
+    const body = {
       first_frame_url: url,
-      last_frame_url: url,
       prompt: fill(scene.loop.prompt),
       duration: scene.loop.duration,
-    });
+    };
+    if (scene.loop.mode !== 'drift') body.last_frame_url = url;
+    await generate(scene.id, 'loop', body);
   }
 
   if ((what === 'all' || what === 'transitions') && scene.transition && next) {

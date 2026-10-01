@@ -29,6 +29,29 @@ export function loadEnv() {
   return { id, secret };
 }
 
+/** fetch с повторами при сетевых сбоях и ответах 5xx/429: 4 попытки, пауза растёт. */
+async function fetchRetry(url, init, tries = 4) {
+  let lastErr;
+  for (let attempt = 1; attempt <= tries; attempt++) {
+    try {
+      const res = await fetch(url, init);
+      if (res.status >= 500 || res.status === 429) {
+        lastErr = new Error(`HTTP ${res.status}`);
+      } else {
+        return res;
+      }
+    } catch (err) {
+      lastErr = err;
+    }
+    if (attempt < tries) {
+      const wait = 2000 * attempt;
+      process.stdout.write(`  сеть: ${lastErr?.cause?.code || lastErr?.message}, повтор через ${wait / 1000} с\n`);
+      await new Promise((r) => setTimeout(r, wait));
+    }
+  }
+  throw lastErr;
+}
+
 function headers() {
   const { id, secret } = loadEnv();
   return {
@@ -41,7 +64,7 @@ function headers() {
 /** Отправить задачу. Возвращает { request_id, status_url, cancel_url, status }. */
 export async function submit(endpoint, body) {
   const url = endpoint.startsWith('http') ? endpoint : `${API}${endpoint}`;
-  const res = await fetch(url, { method: 'POST', headers: headers(), body: JSON.stringify(body) });
+  const res = await fetchRetry(url, { method: 'POST', headers: headers(), body: JSON.stringify(body) });
   const text = await res.text();
   let json;
   try {
@@ -60,7 +83,7 @@ export async function waitFor(statusUrl, { interval = 5000, timeout = 15 * 60 * 
   const started = Date.now();
   let lastStatus = '';
   while (Date.now() - started < timeout) {
-    const res = await fetch(statusUrl, { headers: headers() });
+    const res = await fetchRetry(statusUrl, { headers: headers() });
     const json = await res.json().catch(() => ({}));
     const status = String(json.status || '').toLowerCase();
     if (status !== lastStatus) {
@@ -99,7 +122,7 @@ export function resultUrls(json) {
 
 export async function download(url, dest) {
   mkdirSync(dirname(dest), { recursive: true });
-  const res = await fetch(url);
+  const res = await fetchRetry(url, {});
   if (!res.ok) throw new Error(`Не скачалось ${url}: ${res.status}`);
   const buf = Buffer.from(await res.arrayBuffer());
   writeFileSync(dest, buf);

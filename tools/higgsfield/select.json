@@ -1,6 +1,6 @@
 {
-  "_comment": "Индексы выбранных вариантов (0 = первый). keyframe/closed — кадры, loop/transition/intro — клипы.",
-  "window": { "keyframe": 0, "closed": 0, "intro": 0, "loop": 0, "transition": 0 },
+  "_comment": "Индексы выбранных вариантов (0 = первый файл, keyframe-0). keyframe/closed — кадры, loop/transition/intro — клипы.",
+  "window": { "keyframe": 4, "closed": 4, "intro": 0, "loop": 0, "transition": 0 },
   "airport": { "keyframe": 0, "loop": 0, "transition": 0 },
   "transfer": { "keyframe": 0, "loop": 0, "transition": 0 },
   "hotel": { "keyframe": 0, "loop": 0, "transition": 0 },

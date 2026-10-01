@@ -13,11 +13,13 @@
         "from": "closed",
         "to": "keyframe",
         "duration": 3,
+        "trimStart": 0.75,
         "prompt": "The white aircraft window shutter slides upward smoothly and reveals bright blue sky with soft clouds outside; light spills into the cabin; camera perfectly static; nothing else moves"
       },
       "loop": {
-        "duration": 5,
-        "prompt": "Clouds drift very slowly past the aircraft window, gentle light shimmer on the cabin wall, camera perfectly static, subtle ambient motion only"
+        "mode": "drift",
+        "duration": 10,
+        "prompt": "The fluffy white clouds outside the aircraft window drift slowly and steadily from right to left across the blue sky, as seen from a cruising airliner; the cabin, seats and window frame stay completely still; camera perfectly static; soft natural light"
       },
       "transition": {
         "duration": 4,
@@ -69,12 +71,12 @@
       },
       "transition": {
         "duration": 4,
-        "prompt": "Whip pan to the left across the exhibition hall, strong motion blur, the light turns warm and golden and the image resolves on an evening restaurant terrace in Astana with the Bayterek tower and city lights in the distance; one continuous fast camera move, no cuts"
+        "prompt": "Whip pan to the left across the exhibition hall, strong motion blur, the light turns warm and golden and the image resolves on an evening restaurant terrace in Astana with the white Bayterek monument crowned by a glowing golden sphere and city lights in the distance; one continuous fast camera move, no cuts"
       }
     },
     {
       "id": "evening",
-      "keyframe": "Evening in Astana, business dinner on a restaurant terrace with the illuminated Bayterek tower and city lights softly blurred in the distance, {character} and two colleagues at a table with candles and glasses, warm golden ambient light, medium wide shot",
+      "keyframe": "Evening in Astana, business dinner on a restaurant terrace, {character} and two colleagues at a table with candles and glasses, warm golden ambient light, medium wide shot. In the soft-focus background above the city lights stands the Bayterek monument of Astana: a slender smooth white column that opens at the top into a crown of white branching ribs cradling one large glowing golden glass sphere, like a tree holding a golden egg. Modern low-rise city skyline with warm lights, dusk sky",
       "loop": {
         "duration": 5,
         "prompt": "Candle flames flicker, city lights twinkle in the distance, the guests talk and one raises a glass slowly, camera perfectly static, subtle ambient motion"
