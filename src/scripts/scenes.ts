@@ -1,7 +1,9 @@
 /**
  * Плеер сцен главной страницы.
  * Один жест прокрутки = один переход между эпизодами. Вперёд — видеопереход,
- * назад — быстрый кроссфейд. На мобильных и при prefers-reduced-motion видео не грузится.
+ * назад — быстрый кроссфейд. Видео играет и на телефонах; без видео (только фото и мягкая смена)
+ * страница работает при «уменьшении движения» и режиме экономии трафика, а также если
+ * телефон не дал запустить видео (например, iPhone в режиме энергосбережения).
  */
 import { gsap } from 'gsap';
 import Lenis from 'lenis';
@@ -20,8 +22,11 @@ function init(stack: HTMLElement) {
   const last = scenes.length - 1;
 
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const small = window.matchMedia('(max-width: 768px)').matches;
-  const lite = reduced || small;
+  // экономия трафика в браузере телефона (Chrome Lite mode и т.п.)
+  const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true;
+  const lite = reduced || saveData;
+  // сенсорные устройства: iPhone и многие Android не грузят видео заранее, пока его не запустить
+  const coarse = window.matchMedia('(pointer: coarse)').matches;
 
   // Lenis: плавная прокрутка светлой части. Пока мы внутри сцен — остановлен.
   const lenis = new Lenis({ lerp: 0.11, wheelMultiplier: 1 });
@@ -52,13 +57,39 @@ function init(stack: HTMLElement) {
     if (p && typeof p.catch === 'function') p.catch(() => {});
   };
 
+  /**
+   * «Прогрев» на сенсорных устройствах: короткий запуск невидимого видео и сразу пауза.
+   * Так телефон начинает его скачивать, и к моменту перехода оно уже готово.
+   * dataset.inUse защищает видео, которое за это время успели запустить по-настоящему.
+   */
+  const prime = (v: HTMLVideoElement) => {
+    if (v.dataset.primed) return;
+    v.dataset.primed = '1';
+    const p = v.play();
+    if (p && typeof p.then === 'function') {
+      p.then(() => {
+        if (v.dataset.inUse) return;
+        v.pause();
+        try {
+          v.currentTime = 0;
+        } catch {
+          /* не страшно */
+        }
+      }).catch(() => {});
+    }
+  };
+
   const loadVideo = (v: HTMLVideoElement | null) => {
     if (!v || lite) return;
     if (v.preload !== 'auto') {
       v.preload = 'auto';
       v.load();
     }
+    if (coarse) prime(v);
   };
+
+  /** Точка фокуса сцены по горизонтали (0…1): что видно на вертикальном экране телефона. */
+  const focusOf = (i: number) => Number(scenes[i].dataset.focus ?? 0.5);
 
   /**
    * Запустить фоновую петлю сцены с первого кадра. Пока видео не выдало кадр, виден
@@ -67,6 +98,7 @@ function init(stack: HTMLElement) {
   const showLoop = (i: number) => {
     const v = loopOf(i);
     if (!v || lite) return;
+    v.dataset.inUse = '1';
     try {
       v.currentTime = 0;
     } catch {
@@ -79,6 +111,7 @@ function init(stack: HTMLElement) {
   const stopLoop = (i: number) => {
     const v = loopOf(i);
     if (!v) return;
+    delete v.dataset.inUse;
     v.pause();
     v.classList.remove('is-visible');
   };
@@ -103,6 +136,7 @@ function init(stack: HTMLElement) {
       return;
     }
     end?.classList.remove('is-visible');
+    live.dataset.inUse = '1';
     live.playbackRate = 1;
     try {
       live.currentTime = 0;
@@ -117,6 +151,7 @@ function init(stack: HTMLElement) {
     stopLoop(i);
     const live = liveOf(i);
     if (live) {
+      delete live.dataset.inUse;
       live.pause();
       live.classList.remove('is-visible');
     }
@@ -231,33 +266,67 @@ function init(stack: HTMLElement) {
       .set(toEl, { clearProps: 'opacity,scale,visibility' });
   };
 
+  /**
+   * Сыграть видеопереход. Показываем его только когда видео реально пошло: на телефоне оно
+   * может догружаться долю секунды. Если за START_WAIT не стартовало (нет сети, энергосбережение),
+   * отвечаем false — goTo сделает мягкую смену кадра.
+   * Во время перехода кадр плавно смещается от фокуса этой сцены к фокусу следующей, поэтому
+   * на вертикальном экране стык с новой сценой не прыгает.
+   */
+  const START_WAIT = 1500;
   const playTransitionVideo = (from: number, to: number) =>
     new Promise<boolean>((resolve) => {
       const v = transitionOf(from);
       if (!v || lite) return resolve(false);
-      if (v.readyState < 3) return resolve(false); // не успело загрузиться — пойдём кроссфейдом
 
       let done = false;
+      let started = false;
+      let endTimer = 0;
       const finish = (ok: boolean) => {
         if (done) return;
         done = true;
+        v.removeEventListener('playing', onPlaying);
         v.removeEventListener('ended', onEnded);
         v.removeEventListener('error', onError);
-        clearTimeout(timer);
+        clearTimeout(startTimer);
+        clearTimeout(endTimer);
+        if (!ok) {
+          v.pause();
+          v.classList.remove('is-playing');
+          delete v.dataset.inUse;
+        }
         resolve(ok);
       };
       const onEnded = () => finish(true);
       const onError = () => finish(false);
+      const onPlaying = () => {
+        if (started) return;
+        started = true;
+        v.classList.add('is-playing');
+        const rate = v.playbackRate || TRANSITION_RATE;
+        const seconds = v.duration && isFinite(v.duration) ? v.duration / rate : 3;
+        gsap.fromTo(
+          v,
+          { objectPosition: `${focusOf(from) * 100}% 50%` },
+          { objectPosition: `${focusOf(to) * 100}% 50%`, duration: seconds, ease: 'power1.inOut' },
+        );
+        // подстраховка, если ended не придёт
+        endTimer = window.setTimeout(() => finish(true), seconds * 1000 + 400);
+      };
 
-      v.currentTime = 0;
+      v.dataset.inUse = '1';
+      try {
+        v.currentTime = 0;
+      } catch {
+        /* ещё не загружено — начнёт с нуля */
+      }
       v.playbackRate = TRANSITION_RATE;
-      v.classList.add('is-playing');
+      v.addEventListener('playing', onPlaying);
       v.addEventListener('ended', onEnded);
       v.addEventListener('error', onError);
-
-      // подстраховка, если ended не придёт
-      const expected = (v.duration && isFinite(v.duration) ? v.duration / v.playbackRate : 3) * 1000 + 400;
-      const timer = window.setTimeout(() => finish(true), expected);
+      const startTimer = window.setTimeout(() => {
+        if (!started) finish(false);
+      }, START_WAIT);
 
       // Следующая сцена стартует только после перехода (в goTo), с первого кадра:
       // последний кадр перехода = первый кадр её видео = poster следующей сцены.
@@ -287,6 +356,8 @@ function init(stack: HTMLElement) {
           v.classList.remove('is-playing');
           v.pause();
           v.currentTime = 0;
+          delete v.dataset.inUse;
+          gsap.set(v, { clearProps: 'objectPosition' });
         }
         stopScene(from);
       } else {
@@ -514,19 +585,25 @@ function init(stack: HTMLElement) {
       gsap.to(shadeText, { opacity: 0, yPercent: -70, duration: reduced ? 0.01 : duration, ease: 'power2.in' });
     };
 
-    if (lite || !intro) {
-      // без видео (телефон, reduced motion): закрытый кадр с надписью, затем мягкая смена на открытый
+    // мягкое открытие без видео: закрытый кадр растворяется в открытый
+    let softOpened = false;
+    const softOpen = () => {
+      if (softOpened || finished) return;
+      softOpened = true;
       if (!introPoster) return finish(0.4);
-      const open = () =>
-        window.setTimeout(() => {
-          hideShadeText(0.35);
-          gsap.to(introPoster, {
-            opacity: 0,
-            duration: reduced ? 0.01 : 0.6,
-            ease: 'power2.inOut',
-            onComplete: () => finish(0.05),
-          });
-        }, INTRO_DELAY);
+      hideShadeText(0.35);
+      gsap.to(introPoster, {
+        opacity: 0,
+        duration: reduced ? 0.01 : 0.6,
+        ease: 'power2.inOut',
+        onComplete: () => finish(0.05),
+      });
+    };
+
+    if (lite || !intro) {
+      // без видео (reduced motion, экономия трафика): закрытый кадр с надписью, затем мягкая смена
+      if (!introPoster) return finish(0.4);
+      const open = () => window.setTimeout(softOpen, INTRO_DELAY);
       if (introPoster.complete) open();
       else {
         introPoster.addEventListener('load', open, { once: true });
@@ -536,27 +613,40 @@ function init(stack: HTMLElement) {
     }
 
     const play = () => {
+      if (finished || softOpened) return;
       intro.defaultPlaybackRate = INTRO_RATE;
       intro.playbackRate = INTRO_RATE;
-      intro.classList.add('is-visible'); // первый кадр клипа = закрытый кадр, подмены не видно
+      intro.dataset.inUse = '1';
+      let started = false;
+      // показываем клип, только когда он реально пошёл: первый кадр = закрытый кадр, подмены не видно
+      intro.addEventListener(
+        'playing',
+        () => {
+          started = true;
+          intro.classList.add('is-visible');
+          hideShadeText(0.45);
+        },
+        { once: true },
+      );
       intro.addEventListener('ended', () => finish(0.1, true), { once: true });
-      intro.addEventListener('error', () => finish(0.1), { once: true });
+      intro.addEventListener('error', softOpen, { once: true });
       safePlay(intro);
-      hideShadeText(0.45);
-      window.setTimeout(() => finish(0.1), 8000); // подстраховка, если ended не придёт
+      // телефон не дал запустить видео (энергосбережение, нет сети) — мягкая смена кадра
+      window.setTimeout(() => {
+        if (!started) softOpen();
+      }, 2500);
+      window.setTimeout(() => finish(0.1), 9000); // подстраховка, если ended не придёт
     };
 
     const ready = () => window.setTimeout(play, INTRO_DELAY);
-    if (intro.readyState >= 3) ready();
+    // телефоны не грузят видео заранее, поэтому там не ждём готовности, а сразу запускаем
+    if (intro.readyState >= 3 || coarse) ready();
     else {
       intro.addEventListener('canplaythrough', ready, { once: true });
-      intro.addEventListener('error', () => finish(0.1), { once: true });
+      intro.addEventListener('error', softOpen, { once: true });
       // медленная сеть: не держим посетителя перед закрытой шторкой
       window.setTimeout(() => {
-        if (!finished && intro.readyState < 3) {
-          hideShadeText(0.3);
-          finish(0.1);
-        }
+        if (!finished && intro.readyState < 3) softOpen();
       }, 4000);
     }
   };

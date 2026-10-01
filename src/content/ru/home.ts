@@ -11,6 +11,11 @@ export type Scene = {
   link: { label: string; href: string };
   /** папка с медиа в public/media/scenes/<id>/ */
   media: string;
+  /**
+   * Куда смотреть на вертикальном экране телефона: доля ширины кадра от 0 (левый край) до 1 (правый).
+   * Телефон показывает только центральную полосу широкого кадра, фокус сдвигает её к главному.
+   */
+  focus?: number;
   /** надпись на закрытой шторке иллюминатора, видна до её открытия (только первая сцена) */
   shade?: { label: string; title: string };
   /**
@@ -30,6 +35,7 @@ export const scenes: Scene[] = [
     primary: { label: 'Оставить заявку', href: '/contacts#form' },
     link: { label: 'Все услуги', href: '/event-support' },
     media: 'window',
+    focus: 0.5,
     shade: { label: 'ADL Event Services', title: 'Добро пожаловать в Казахстан' },
   },
   {
@@ -39,6 +45,7 @@ export const scenes: Scene[] = [
     text: 'Сопровождающий с табличкой, помощь с багажом, автомобиль у выхода. Приглашения и визовую поддержку организуем ещё до вылета.',
     link: { label: 'Сопровождение делегаций', href: '/for-delegations' },
     media: 'airport',
+    focus: 0.6,
   },
   {
     id: 'transfer',
@@ -47,6 +54,7 @@ export const scenes: Scene[] = [
     text: 'Аэропорт, отель, EXPO, деловые встречи. От автомобиля бизнес-класса до автобуса на всю делегацию.',
     link: { label: 'Трансферы', href: '/transfers' },
     media: 'transfer',
+    focus: 0.8,
   },
   {
     id: 'hotel',
@@ -55,6 +63,7 @@ export const scenes: Scene[] = [
     text: 'Отели рядом с площадкой, гостиничные блоки под группу, единый счёт и координатор, который решает вопросы на ресепшн.',
     link: { label: 'Размещение', href: '/accommodation' },
     media: 'hotel',
+    focus: 0.6,
   },
   {
     id: 'expo',
@@ -63,6 +72,7 @@ export const scenes: Scene[] = [
     text: 'Доставка образцов и документов, погрузка, перенос и вывоз оборудования по регламенту площадки.',
     link: { label: 'Доставка и логистика', href: '/logistics' },
     media: 'expo',
+    focus: 0.6,
   },
   {
     id: 'evening',
@@ -71,6 +81,7 @@ export const scenes: Scene[] = [
     text: 'Ужины, встречи, знакомство с городом. Координатор ведёт расписание и остаётся на связи до конца дня.',
     link: { label: 'Индивидуальная программа', href: '/for-delegations' },
     media: 'evening',
+    focus: 0.45,
   },
   {
     id: 'departure',
@@ -80,6 +91,7 @@ export const scenes: Scene[] = [
     primary: { label: 'Оставить заявку', href: '/contacts#form' },
     link: { label: 'Как мы работаем', href: '/event-support' },
     media: 'departure',
+    focus: 0.52,
   },
 ];
 

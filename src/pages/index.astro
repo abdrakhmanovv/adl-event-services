@@ -27,8 +27,9 @@ const has = (id: string, file: string) => existsSync(join(process.cwd(), 'public
             class:list={['scene', i === 0 && 'is-active']}
             data-scene={s.id}
             data-index={i}
+            data-focus={s.focus ?? 0.5}
             aria-hidden={i !== 0 ? 'true' : undefined}
-            style={`--scene-hue: ${i * 37}`}
+            style={`--scene-hue: ${i * 37}; --focus: ${s.focus ?? 0.5}`}
           >
             <div class="scene__media">
               <img class="scene__poster" src={media(s.media, 'poster.webp')} alt="" decoding="async" loading={i === 0 ? 'eager' : 'lazy'} />
@@ -332,6 +333,8 @@ const has = (id: string, file: string) => existsSync(join(process.cwd(), 'public
     width: 100%;
     height: 100%;
     object-fit: cover;
+    /* на вертикальном экране видна только полоса кадра, --focus сдвигает её к главному */
+    object-position: calc(var(--focus, 0.5) * 100%) 50%;
   }
 
   .scene__poster {

@@ -33,25 +33,27 @@ npm run build        # сборка в dist/
 
 ## Главная: сцены и клипы
 
-Семь эпизодов пути гостя: `window → airport → transfer → hotel → expo → evening → departure`. Один жест прокрутки = один переход. Для каждой сцены в `public/media/scenes/<id>/`:
+Семь эпизодов пути гостя: `window`, `airport`, `transfer`, `hotel`, `expo`, `evening`, `departure`. Один жест прокрутки или свайп = один переход. Видео играет и на компьютере, и на телефоне. Без видео, только фото с мягкой сменой, страница показывается при включённом «уменьшении движения», в режиме экономии трафика и если телефон не дал запустить видео (например, iPhone в режиме энергосбережения).
 
-- `poster.webp` — первый кадр (показывается мгновенно и на мобильных)
-- `loop.mp4` — зацикленный фон (5 с)
-- `transition.mp4` — переход к следующей сцене (нет у последней)
-- `intro.mp4` + `intro-poster.webp` — только у `window`: закрытая шторка → открытая
+Файлы сцены в `public/media/scenes/<id>/`:
 
-Генерация через Higgsfield (`tools/higgsfield/`):
+- `window`: `intro-poster.webp` и `intro.mp4` (закрытая шторка открывается), `poster.webp` и `loop.mp4` (бесконечные облака), `transition.mp4`
+- остальные: `poster.webp` (фото), `live.mp4` (оживление, проигрывается один раз), `end.webp` (последний кадр), `transition.mp4` (переход к следующей сцене, у последней нет)
 
-1. Скопируйте `tools/higgsfield/.env.example` в `.env` и вставьте ключи из Higgsfield Console.
-2. `npm run media:keyframes` — кадры сцен (Soul V2, по 4 варианта). Промпты в `scenes.json`.
-3. Отсмотрите `tools/higgsfield/out/<сцена>/keyframe-*.jpg`, укажите номера выбранных в `select.json`.
-4. `npm run media:videos -- --what all` — петли, переходы и интро (Kling O3 first-last-frame).
-5. Укажите выбранные клипы в `select.json`, затем `npm run media:post` — ffmpeg сожмёт их в `public/media/scenes/`.
-6. Проверьте главную и закоммитьте.
+Видео подключается на странице, только если файл есть, поэтому сцену можно временно оставить на одном фото.
 
-Чтобы перегенерировать одну сцену: `node tools/higgsfield/gen-keyframes.mjs --only hotel --force`, затем шаги 3–5 с `--only hotel`.
+**Телефон.** Вертикальный экран видит только полосу широкого кадра. Куда она смотрит, задаёт `focus` сцены в `src/content/ru/home.ts` (0 левый край, 1 правый). Во время перехода кадр плавно смещается от фокуса одной сцены к фокусу следующей.
 
-Временные заглушки (цветные градиенты) делаются командой `node tools/media/make-placeholders.mjs`.
+**Генерация через Higgsfield** (`tools/higgsfield/`, ключи в `tools/higgsfield/.env` по образцу `.env.example`). Описания сцен и промпты лежат в `scenes.json`, выбранные варианты в `select.json`.
+
+1. `node tools/higgsfield/prep-photos.mjs` обрезает фото из `photo/фото анимации` до 16:9, загружает в Higgsfield и чистит надписи (поле `clean`).
+2. `node tools/higgsfield/gen-videos.mjs --what live` оживляет сцены.
+3. `node tools/higgsfield/extract-last.mjs` берёт последний кадр каждого оживления: с него начинается переход.
+4. `node tools/higgsfield/gen-videos.mjs --what transitions` делает переходы.
+5. `node tools/higgsfield/postprocess.mjs` сжимает выбранные клипы в `public/media/scenes/`.
+6. `node tools/media/make-demo.mjs` собирает ролик-превью всего пути в `tools/higgsfield/out/demo-full.mp4`.
+
+Чтобы переделать одну сцену, добавьте `--only hotel` и `--force`, а лишний вариант выберите в `select.json`. Если переделано оживление, переход после него тоже нужно перегенерировать: он стартует с последнего кадра.
 
 ## Публикация
 
