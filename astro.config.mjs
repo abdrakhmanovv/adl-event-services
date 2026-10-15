@@ -17,4 +17,8 @@ export default defineConfig({
   build: { format: 'directory' },
   compressHTML: true,
   devToolbar: { enabled: false },
+  // старая страница «Погрузка и транспортировка» вошла в «Доставку и логистику»
+  redirects: {
+    '/logistics': `${base.replace(/\/$/, '')}/delivery/`,
+  },
 });

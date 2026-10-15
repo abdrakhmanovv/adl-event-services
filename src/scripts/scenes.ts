@@ -1,8 +1,10 @@
 /**
  * Плеер сцен главной страницы.
  *
- * Один жест = один переход между эпизодами: прокрутка колесом или тачпадом (вниз или вбок),
- * свайп пальцем вверх или влево — дальше; вниз или вправо — назад; стрелки на клавиатуре.
+ * Страница листается как обычно (колесо, свайп вверх-вниз). Сцены листаются отдельно:
+ * свайп влево или вправо, стрелки «‹ ›» на экране, клик по сцене, стрелки клавиатуры,
+ * горизонтальная прокрутка тачпадом. Если посетитель ничего не трогает, сцены идут сами:
+ * сцена оживает, стоит пару секунд на последнем кадре и переходит к следующей.
  * Вперёд — видеопереход, назад — быстрая мягкая смена кадра.
  *
  * Каждый клип заранее скачивается целиком в память (blob). Телефоны, особенно iPhone, иначе
@@ -23,7 +25,10 @@ function init(stack: HTMLElement) {
   const scenes = Array.from(stack.querySelectorAll<HTMLElement>('.scene'));
   const navButtons = Array.from(stack.querySelectorAll<HTMLButtonElement>('[data-goto]'));
   const counter = stack.querySelector<HTMLElement>('[data-counter-current]');
-  const hintButton = stack.querySelector<HTMLButtonElement>('[data-next]');
+  const hintButton = stack.querySelector<HTMLButtonElement>('[data-down]');
+  const prevButton = stack.querySelector<HTMLButtonElement>('[data-prev]');
+  const nextButton = stack.querySelector<HTMLButtonElement>('[data-next]');
+  const pauseButton = stack.querySelector<HTMLButtonElement>('[data-pause]');
   const header = document.getElementById('site-header');
   const after = document.getElementById('content');
   const last = scenes.length - 1;
@@ -32,17 +37,27 @@ function init(stack: HTMLElement) {
   // экономия трафика в браузере телефона (Chrome Lite mode и т.п.)
   const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true;
   const lite = reduced || saveData;
+  // телефон вертикально: берём лёгкие вырезанные клипы (-m), то же условие, что у картинок в разметке
+  const portrait = window.matchMedia('(max-aspect-ratio: 2/3)').matches;
 
-  // Lenis: плавная прокрутка светлой части. Пока мы внутри сцен — остановлен.
+  // Lenis: плавная прокрутка страницы колесом мыши
   const lenis = new Lenis({ lerp: 0.11, wheelMultiplier: 1 });
   gsap.ticker.add((t) => lenis.raf(t * 1000));
   gsap.ticker.lagSmoothing(0);
 
   let current = 0;
   let busy = false;
-  let released = false;
   let lastActionAt = 0;
   const COOLDOWN = 450; // мс после перехода, чтобы «дожёвывание» тачпада не листало дальше
+
+  // Автопоказ: сколько сцена стоит на последнем кадре, прежде чем перейти дальше
+  const AUTO_HOLD = 2500;
+  // иллюминатор (бесконечные облака) и сцены без видео показываются столько
+  const AUTO_STILL = 5000;
+  // при «уменьшении движения» сцены сами не листаются
+  let autoplay = !reduced;
+  let autoTimer = 0;
+  let heroVisible = true;
 
   // Первая сцена: сколько надпись «Добро пожаловать в Казахстан» видна на закрытой шторке
   // до начала открытия, и во сколько раз ускорить клип открытия (клипы Higgsfield не короче 3 с).
@@ -79,7 +94,16 @@ function init(stack: HTMLElement) {
   //   dataset.started — клип уже запущен: подменять ему источник нельзя, он перезапустится.
   const blobUrls = new Map<string, Promise<string>>();
 
-  const sourceOf = (v: HTMLVideoElement) => v.querySelector('source')?.getAttribute('src') ?? v.getAttribute('src') ?? '';
+  // На телефоне сразу переключаем видео на лёгкие версии: и для загрузки в память,
+  // и на случай, если она не удастся и видео пойдёт прямо из сети.
+  if (portrait && !lite) {
+    stack.querySelectorAll<HTMLVideoElement>('video[data-src-m]').forEach((v) => {
+      v.setAttribute('src', v.dataset.srcM!);
+      v.dataset.mobile = '1'; // сдвиг кадра уже вшит в клип
+    });
+  }
+
+  const sourceOf = (v: HTMLVideoElement) => v.getAttribute('src') || v.querySelector('source')?.getAttribute('src') || '';
 
   const fetchBlobUrl = (src: string) => {
     let p = blobUrls.get(src);
@@ -114,20 +138,46 @@ function init(stack: HTMLElement) {
   const readyWithin = (v: HTMLVideoElement, ms: number) =>
     Promise.race([ensureBlob(v).catch(() => false), wait(ms).then(() => false)]);
 
-  /** Начать загрузку заранее (без ожидания). */
-  const preload = (v: HTMLVideoElement | null) => {
-    if (!v || lite) return;
-    ensureBlob(v).catch(() => {});
+  /**
+   * Очередь заблаговременной загрузки: клипы качаются по одному, в порядке нужности.
+   * На слабом интернете параллельные загрузки делили бы канал, и ни один клип не успевал бы.
+   * Клип, который нужен прямо сейчас, грузится вне очереди (readyWithin) — повторно он не скачается.
+   */
+  const queue: HTMLVideoElement[] = [];
+  let pumping = false;
+  const pump = async () => {
+    if (pumping) return;
+    pumping = true;
+    while (queue.length) {
+      const v = queue.shift()!;
+      if (v.dataset.blob) continue;
+      await ensureBlob(v).catch(() => {});
+    }
+    pumping = false;
   };
 
-  const preloadAround = (i: number) => {
-    preload(loopOf(i));
-    preload(transitionOf(i));
-    if (i + 1 <= last) {
-      preload(loopOf(i + 1));
-      preload(liveOf(i + 1));
-      preload(transitionOf(i + 1));
+  /** Поставить клипы в начало очереди в указанном порядке. */
+  const preloadFirst = (list: (HTMLVideoElement | null)[]) => {
+    if (lite) return;
+    const items = list.filter((v): v is HTMLVideoElement => Boolean(v && !v.dataset.blob));
+    for (const v of items) {
+      const k = queue.indexOf(v);
+      if (k >= 0) queue.splice(k, 1);
     }
+    queue.unshift(...items);
+    pump();
+  };
+
+  /** Что понадобится дальше, по порядку: переход отсюда, оживление следующей сцены, переход после неё. */
+  const preloadAround = (i: number) => {
+    preloadFirst([
+      loopOf(i),
+      transitionOf(i),
+      i + 1 <= last ? loopOf(i + 1) : null,
+      i + 1 <= last ? liveOf(i + 1) : null,
+      i + 1 <= last ? transitionOf(i + 1) : null,
+      i + 2 <= last ? liveOf(i + 2) : null,
+    ]);
   };
 
   /** Сбросить флажки показа: клип снова свободен. */
@@ -248,8 +298,6 @@ function init(stack: HTMLElement) {
       else b.removeAttribute('aria-current');
     });
     if (counter) counter.textContent = String(i + 1);
-    const id = scenes[i].dataset.scene;
-    if (id) history.replaceState(null, '', i === 0 ? location.pathname : `#${id}`);
   };
 
   /** Что анимировать в тексте сцены: элементы с data-anim (первая сцена), иначе прямые потомки. */
@@ -281,26 +329,6 @@ function init(stack: HTMLElement) {
       stagger: reduced ? 0 : 0.03,
       ease: 'power2.in',
     });
-  };
-
-  // ---------- захват / освобождение прокрутки ----------
-  const capture = () => {
-    released = false;
-    lenis.stop();
-    header?.classList.remove('is-light');
-    document.documentElement.classList.add('scenes-captured');
-  };
-
-  const releaseScroll = () => {
-    released = true;
-    lenis.start();
-    lenis.resize();
-    document.documentElement.classList.remove('scenes-captured');
-    if (after) {
-      // числовая цель надёжнее: Lenis только что «проснулся» и мог не знать размеры
-      const top = stack.offsetTop + stack.offsetHeight;
-      lenis.scrollTo(top, { duration: 0.9, easing: (t) => 1 - Math.pow(1 - t, 3), force: true });
-    }
   };
 
   // ---------- переходы ----------
@@ -341,8 +369,10 @@ function init(stack: HTMLElement) {
     }
 
     return new Promise<boolean>((resolve) => {
-      const f0 = focusOf(from);
-      const f1 = focusOf(to);
+      // в лёгких клипах для телефона сдвиг уже вшит — браузеру двигать нечего
+      const baked = v.dataset.mobile === '1';
+      const f0 = baked ? 0.5 : focusOf(from);
+      const f1 = baked ? 0.5 : focusOf(to);
       let done = false;
       let started = false;
       let endTimer = 0;
@@ -355,10 +385,23 @@ function init(stack: HTMLElement) {
         v.style.objectPosition = `${(f0 + (f1 - f0) * e) * 100}% 50%`;
       };
 
+      /**
+       * Подстраховка на случай, если ended не придёт: срок пересчитывается по фактическому
+       * положению видео, поэтому короткая задержка воспроизведения не обрывает переход раньше времени.
+       */
+      const armEndTimer = () => {
+        clearTimeout(endTimer);
+        const d = v.duration && isFinite(v.duration) ? v.duration : 3;
+        const left = Math.max(0, d - v.currentTime) / (v.playbackRate || TRANSITION_RATE);
+        endTimer = window.setTimeout(() => finish(true), left * 1000 + 1500);
+      };
+      const onTimeUpdate = () => armEndTimer();
+
       const finish = (ok: boolean) => {
         if (done) return;
         done = true;
         v.removeEventListener('playing', onPlaying);
+        v.removeEventListener('timeupdate', onTimeUpdate);
         v.removeEventListener('ended', onEnded);
         v.removeEventListener('error', onError);
         gsap.ticker.remove(pan);
@@ -378,14 +421,13 @@ function init(stack: HTMLElement) {
         if (started) return;
         started = true;
         v.classList.add('is-playing');
-        const seconds = v.duration && isFinite(v.duration) ? v.duration / (v.playbackRate || TRANSITION_RATE) : 3;
-        // подстраховка, если ended не придёт (держим запас на возможные подтормаживания)
-        endTimer = window.setTimeout(() => finish(true), seconds * 1000 + 1500);
+        armEndTimer();
+        v.addEventListener('timeupdate', onTimeUpdate);
       };
 
       v.dataset.inUse = '1';
       v.dataset.started = '1';
-      v.style.objectPosition = `${f0 * 100}% 50%`;
+      if (!baked) v.style.objectPosition = `${f0 * 100}% 50%`;
       try {
         v.currentTime = 0;
       } catch {
@@ -406,9 +448,64 @@ function init(stack: HTMLElement) {
     });
   };
 
+  // ---------- автопоказ ----------
+  const clearAuto = () => {
+    clearTimeout(autoTimer);
+    autoTimer = 0;
+  };
+
+  const scheduleAuto = (ms: number) => {
+    clearTimeout(autoTimer);
+    autoTimer = window.setTimeout(autoNext, ms);
+  };
+
+  /**
+   * Запланировать переход к следующей сцене: после конца оживления и паузы AUTO_HOLD,
+   * у сцен без оживления — через AUTO_STILL.
+   */
+  const armAuto = (i: number) => {
+    clearAuto();
+    if (!autoplay) return;
+    const live = liveOf(i);
+    if (live && !lite) {
+      live.addEventListener(
+        'ended',
+        () => {
+          if (current === i && autoplay) scheduleAuto(AUTO_HOLD);
+        },
+        { once: true },
+      );
+      scheduleAuto(12000); // подстраховка: если оживление так и не стартовало
+    } else {
+      scheduleAuto(i === 0 ? AUTO_STILL + 1500 : AUTO_STILL);
+    }
+  };
+
+  /** Следующая сцена по таймеру. Пока сцены не видно на экране или вкладка свёрнута — ждём. */
+  function autoNext() {
+    if (!autoplay) return;
+    if (busy || !heroVisible || document.hidden) {
+      scheduleAuto(1000);
+      return;
+    }
+    if (current === last) goTo(0, 'jump');
+    else goTo(current + 1, 'forward');
+  }
+
+  const setAutoplay = (on: boolean) => {
+    autoplay = on;
+    pauseButton?.setAttribute('aria-pressed', String(!on));
+    pauseButton?.setAttribute('aria-label', on ? 'Остановить автопоказ' : 'Включить автопоказ');
+    stack.classList.toggle('is-paused', !on);
+    if (on) armAuto(current);
+    else clearAuto();
+  };
+
+  // ---------- переключение сцен ----------
   const goTo = async (to: number, direction: 'forward' | 'backward' | 'jump') => {
     if (busy || to === current || to < 0 || to > last) return;
     busy = true;
+    clearAuto();
     stack.classList.add('has-moved');
     const from = current;
 
@@ -449,46 +546,38 @@ function init(stack: HTMLElement) {
     preloadAround(to);
     lastActionAt = performance.now();
     busy = false;
+    armAuto(to);
   };
 
+  // по кругу: после проводов снова иллюминатор, назад с иллюминатора — проводы
   const next = () => {
     if (busy) return;
-    if (current === last) {
-      if (!released) releaseScroll();
-      return;
-    }
-    goTo(current + 1, 'forward');
+    if (current === last) goTo(0, 'jump');
+    else goTo(current + 1, 'forward');
   };
 
   const prev = () => {
-    if (busy || current === 0) return;
-    goTo(current - 1, 'backward');
+    if (busy) return;
+    if (current === 0) goTo(last, 'jump');
+    else goTo(current - 1, 'backward');
   };
 
   // ---------- ввод ----------
   const inCooldown = () => performance.now() - lastActionAt < COOLDOWN;
 
-  // колесо и тачпад: вниз или вправо — дальше, вверх или влево — назад
+  // Горизонтальная прокрутка тачпадом над сценами листает их; вертикальная — страницу
   let wheelAccum = 0;
-  window.addEventListener(
+  stack.addEventListener(
     'wheel',
     (e) => {
-      if (released) {
-        // вернуться в сцены, если на самом верху и крутят вверх
-        if (window.scrollY <= 1 && e.deltaY < 0 && !busy) {
-          e.preventDefault();
-          capture();
-          lastActionAt = performance.now();
-        }
-        return;
-      }
-      e.preventDefault();
+      if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return; // вертикаль — обычная прокрутка страницы
+      e.preventDefault(); // не даём браузеру уйти «назад» жестом
       if (busy || inCooldown()) {
         wheelAccum = 0;
         return;
       }
-      wheelAccum += Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-      if (Math.abs(wheelAccum) < 12) return;
+      wheelAccum += e.deltaX;
+      if (Math.abs(wheelAccum) < 30) return;
       const dir = wheelAccum > 0 ? 1 : -1;
       wheelAccum = 0;
       dir > 0 ? next() : prev();
@@ -496,90 +585,82 @@ function init(stack: HTMLElement) {
     { passive: false },
   );
 
-  // свайп: палец вверх или влево — дальше, вниз или вправо — назад
+  // Свайп по сценам: влево — дальше, вправо — назад. Вверх-вниз страница листается сама
+  // (у .scenes стоит touch-action: pan-y, браузер отдаёт нам только горизонтальные жесты).
   const SWIPE = 40;
   let touchX: number | null = null;
   let touchY: number | null = null;
-  window.addEventListener(
+  let swiped = false;
+  stack.addEventListener(
     'touchstart',
     (e) => {
       touchX = e.touches[0]?.clientX ?? null;
       touchY = e.touches[0]?.clientY ?? null;
+      swiped = false;
     },
     { passive: true },
   );
-  window.addEventListener(
-    'touchmove',
+  stack.addEventListener(
+    'touchend',
     (e) => {
-      if (!released) e.preventDefault();
+      if (touchX === null || touchY === null) return;
+      const t = e.changedTouches[0];
+      const dx = touchX - (t?.clientX ?? touchX); // > 0: палец ушёл влево
+      const dy = touchY - (t?.clientY ?? touchY);
+      touchX = touchY = null;
+      if (Math.abs(dx) < SWIPE || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+      swiped = true;
+      if (busy || inCooldown()) return;
+      dx > 0 ? next() : prev();
     },
-    { passive: false },
+    { passive: true },
   );
-  window.addEventListener('touchend', (e) => {
-    if (touchX === null || touchY === null) return;
-    const t = e.changedTouches[0];
-    const dx = touchX - (t?.clientX ?? touchX); // > 0: палец ушёл влево
-    const dy = touchY - (t?.clientY ?? touchY); // > 0: палец ушёл вверх
-    touchX = touchY = null;
-    if (released) {
-      if (window.scrollY <= 1 && dy < -SWIPE && Math.abs(dy) > Math.abs(dx) && !busy) {
-        capture();
-        lastActionAt = performance.now();
-      }
+
+  // Клик или тап по свободному месту сцены — следующая сцена (кнопки и ссылки работают как обычно)
+  stack.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('a, button, input, label')) return;
+    if (swiped) {
+      swiped = false;
       return;
     }
-    const amount = Math.abs(dx) > Math.abs(dy) ? dx : dy;
-    if (busy || inCooldown() || Math.abs(amount) < SWIPE) return;
-    amount > 0 ? next() : prev();
+    if (busy || inCooldown()) return;
+    next();
   });
 
+  prevButton?.addEventListener('click', prev);
+  nextButton?.addEventListener('click', next);
+  pauseButton?.addEventListener('click', () => setAutoplay(!autoplay));
+
+  // Стрелки влево-вправо на клавиатуре, пока сцены на экране
   window.addEventListener('keydown', (e) => {
-    if (released) return;
+    if (!heroVisible) return;
     const target = e.target as HTMLElement | null;
     if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
-    switch (e.key) {
-      case 'ArrowDown':
-      case 'ArrowRight':
-      case 'PageDown':
-      case ' ':
-        e.preventDefault();
-        next();
-        break;
-      case 'ArrowUp':
-      case 'ArrowLeft':
-      case 'PageUp':
-        e.preventDefault();
-        prev();
-        break;
-      case 'Home':
-        e.preventDefault();
-        goTo(0, 'backward');
-        break;
-      case 'End':
-        e.preventDefault();
-        goTo(last, 'jump');
-        break;
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      next();
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      prev();
     }
   });
 
   navButtons.forEach((b, i) => {
-    b.addEventListener('click', () => {
-      if (released) capture();
-      goTo(i, i > current ? 'forward' : 'backward');
-    });
+    b.addEventListener('click', () => goTo(i, i > current ? 'forward' : 'backward'));
   });
 
-  hintButton?.addEventListener('click', next);
+  // «Вниз» — к услугам
+  hintButton?.addEventListener('click', () => {
+    if (after) lenis.scrollTo(after, { duration: 0.9 });
+  });
 
   // Переход по ссылке вида /#hotel уже на открытой странице
   window.addEventListener('hashchange', () => {
     const id = location.hash.replace('#', '');
     const idx = scenes.findIndex((s) => s.dataset.scene === id);
     if (idx < 0 || idx === current) return;
-    if (released) {
-      capture();
-      lenis.scrollTo(0, { immediate: true });
-    }
+    lenis.scrollTo(0, { immediate: true });
     goTo(idx, idx > current ? 'forward' : 'backward');
   });
 
@@ -590,12 +671,20 @@ function init(stack: HTMLElement) {
     });
   }
 
-  // Шапка становится светлой, когда сцены ушли из вида
-  if (header && 'IntersectionObserver' in window) {
-    const io = new IntersectionObserver(([entry]) => header.classList.toggle('is-light', !entry.isIntersecting), {
-      threshold: 0.02,
-    });
-    io.observe(stack);
+  if ('IntersectionObserver' in window) {
+    // Шапка становится светлой, когда сцены ушли из вида
+    if (header) {
+      new IntersectionObserver(([entry]) => header.classList.toggle('is-light', !entry.isIntersecting), {
+        threshold: 0.02,
+      }).observe(stack);
+    }
+    // Автопоказ и стрелки клавиатуры работают, пока сцены хотя бы наполовину на экране
+    new IntersectionObserver(
+      ([entry]) => {
+        heroVisible = entry.isIntersecting;
+      },
+      { threshold: 0.5 },
+    ).observe(stack);
   }
 
   // ---------- старт ----------
@@ -626,6 +715,7 @@ function init(stack: HTMLElement) {
     startScene(idx, 'play');
     preloadAround(idx);
     stack.classList.add('has-moved');
+    armAuto(idx);
     return true;
   };
 
@@ -642,6 +732,7 @@ function init(stack: HTMLElement) {
       finished = true;
       showLoop(0); // петля облаков стартует под открытой шторкой
       textIn(0, textDelay);
+      armAuto(0);
       if (dissolve && intro && !reduced) {
         // облака в петле плывут, поэтому последний кадр открытия мягко растворяем в неё
         gsap.to([intro, introPoster].filter(Boolean), { opacity: 0, duration: 0.4, ease: 'power1.inOut', onComplete: skipIntro });
@@ -675,7 +766,7 @@ function init(stack: HTMLElement) {
     const play = async () => {
       if (finished || softOpened) return;
       if (!intro) return softOpen();
-      // клип открытия маленький (около 200 КБ); ждём его, пока на экране закрытая шторка с надписью
+      // клип открытия маленький; ждём его, пока на экране закрытая шторка с надписью
       await readyWithin(intro, 2500);
       if (finished || softOpened) return;
       intro.defaultPlaybackRate = INTRO_RATE;
@@ -721,12 +812,6 @@ function init(stack: HTMLElement) {
     }
   };
 
-  capture();
-  window.scrollTo(0, 0);
+  setAutoplay(autoplay);
   if (!startFromHash()) startIntro();
-
-  // Если открыли главную с #form или #content — отдать обычную прокрутку
-  if (location.hash === '#form' || location.hash === '#content') {
-    releaseScroll();
-  }
 }

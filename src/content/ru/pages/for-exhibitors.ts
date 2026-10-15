@@ -58,6 +58,6 @@ export const forExhibitors: ServicePageContent = {
       a: 'Ваш координатор. В часы работы площадки он отвечает в WhatsApp или по телефону и подключает нужных исполнителей.',
     },
   ],
-  related: ['logistics', 'delivery', 'accommodation'],
+  related: ['delivery', 'venue', 'accommodation'],
   preselect: ['Отель', 'Трансфер', 'Транспортировка оборудования'],
 };

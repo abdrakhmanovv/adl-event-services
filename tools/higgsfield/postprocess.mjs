@@ -160,4 +160,10 @@ for (const scene of config.scenes) {
   console.log(`${done.length ? '✓' : '–'} ${scene.id}: ${done.join(', ') || 'нечего обрабатывать'}`);
 }
 
+// лёгкие вертикальные версии для телефона делаются из только что сжатых файлов
+console.log('\nВерсии для телефона:');
+execFileSync(process.execPath, [join(process.cwd(), 'tools', 'media', 'make-mobile.mjs'), ...(only ? ['--only', only.join(',')] : [])], {
+  stdio: 'inherit',
+});
+
 console.log('\nГотово: public/media/scenes/. Проверьте главную и закоммитьте.');

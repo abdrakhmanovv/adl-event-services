@@ -16,6 +16,15 @@ import { join } from 'node:path';
 const media = (id: string, file: string) => asset(`/media/scenes/${id}/${file}`);
 /** Есть ли файл сцены в public/: видео подключаем, только когда оно уже сгенерировано. */
 const has = (id: string, file: string) => existsSync(join(process.cwd(), 'public', 'media', 'scenes', id, file));
+/**
+ * Лёгкая вертикальная версия файла для телефона (poster.webp → poster-m.webp), если она есть.
+ * Её делает tools/media/make-mobile.mjs. Условие «телефон вертикально» — то же, что в плеере.
+ */
+const PORTRAIT = '(max-aspect-ratio: 2/3)';
+const mobileOf = (id: string, file: string) => {
+  const m = file.replace(/\.(\w+)$/, '-m.$1');
+  return has(id, m) ? media(id, m) : undefined;
+};
 ---
 
 <Base title={site.name} theme="night" bodyClass="page-home" floating={false}>
@@ -32,11 +41,19 @@ const has = (id: string, file: string) => existsSync(join(process.cwd(), 'public
             style={`--scene-hue: ${i * 37}; --focus: ${s.focus ?? 0.5}`}
           >
             <div class="scene__media">
-              <img class="scene__poster" src={media(s.media, 'poster.webp')} alt="" decoding="async" loading={i === 0 ? 'eager' : 'lazy'} />
+              <picture class="scene__pic">
+                {mobileOf(s.media, 'poster.webp') && <source media={PORTRAIT} srcset={mobileOf(s.media, 'poster.webp')} />}
+                <img class="scene__poster" src={media(s.media, 'poster.webp')} alt="" decoding="async" loading={i === 0 ? 'eager' : 'lazy'} />
+              </picture>
               {i === 0 && has(s.media, 'intro.mp4') && (
                 <>
-                  <img class="scene__intro-poster" src={media(s.media, 'intro-poster.webp')} alt="" decoding="async" />
-                  <video class="scene__intro" muted playsinline preload="none" aria-hidden="true">
+                  <picture class="scene__pic">
+                    {mobileOf(s.media, 'intro-poster.webp') && (
+                      <source media={PORTRAIT} srcset={mobileOf(s.media, 'intro-poster.webp')} />
+                    )}
+                    <img class="scene__intro-poster" src={media(s.media, 'intro-poster.webp')} alt="" decoding="async" />
+                  </picture>
+                  <video class="scene__intro" muted playsinline preload="none" aria-hidden="true" data-src-m={mobileOf(s.media, 'intro.mp4')}>
                     <source src={media(s.media, 'intro.mp4')} type="video/mp4" />
                   </video>
                 </>
@@ -49,21 +66,31 @@ const has = (id: string, file: string) => existsSync(join(process.cwd(), 'public
               )}
               {/* иллюминатор: бесконечная петля облаков */}
               {has(s.media, 'loop.mp4') && (
-                <video class="scene__loop" muted loop playsinline preload="none" aria-hidden="true">
+                <video class="scene__loop" muted loop playsinline preload="none" aria-hidden="true" data-src-m={mobileOf(s.media, 'loop.mp4')}>
                   <source src={media(s.media, 'loop.mp4')} type="video/mp4" />
                 </video>
               )}
               {/* сцены на фото: оживают один раз и замирают на последнем кадре */}
               {has(s.media, 'live.mp4') && (
-                <video class="scene__live" muted playsinline preload="none" aria-hidden="true">
+                <video class="scene__live" muted playsinline preload="none" aria-hidden="true" data-src-m={mobileOf(s.media, 'live.mp4')}>
                   <source src={media(s.media, 'live.mp4')} type="video/mp4" />
                 </video>
               )}
               {has(s.media, 'end.webp') && has(s.media, 'live.mp4') && (
-                <img class="scene__end" src={media(s.media, 'end.webp')} alt="" decoding="async" loading="lazy" />
+                <picture class="scene__pic">
+                  {mobileOf(s.media, 'end.webp') && <source media={PORTRAIT} srcset={mobileOf(s.media, 'end.webp')} />}
+                  <img class="scene__end" src={media(s.media, 'end.webp')} alt="" decoding="async" loading="lazy" />
+                </picture>
               )}
               {i < scenes.length - 1 && has(s.media, 'transition.mp4') && (
-                <video class="scene__transition" muted playsinline preload="none" aria-hidden="true">
+                <video
+                  class="scene__transition"
+                  muted
+                  playsinline
+                  preload="none"
+                  aria-hidden="true"
+                  data-src-m={mobileOf(s.media, 'transition.mp4')}
+                >
                   <source src={media(s.media, 'transition.mp4')} type="video/mp4" />
                 </video>
               )}
@@ -137,14 +164,25 @@ const has = (id: string, file: string) => existsSync(join(process.cwd(), 'public
     </nav>
 
     <div class="scenes__footer">
-      <button type="button" class="scenes__hint" data-next>
+      <button type="button" class="scenes__hint" data-down>
         <Icon name="arrow-down" size={18} />
-        <span class="scenes__hint-mouse">Листайте, чтобы пройти путь гостя</span>
-        <span class="scenes__hint-touch">Листайте вверх или влево</span>
+        <span>Услуги</span>
       </button>
-      <span class="scenes__counter" aria-live="polite">
-        <span data-counter-current>1</span> / {scenes.length}
-      </span>
+      <div class="scenes__controls">
+        <button type="button" class="scenes__ctrl" data-pause aria-pressed="false" aria-label="Остановить автопоказ">
+          <svg class="scenes__ico-pause" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" /></svg>
+          <svg class="scenes__ico-play" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor" /></svg>
+        </button>
+        <button type="button" class="scenes__ctrl" data-prev aria-label="Предыдущая сцена">
+          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+        </button>
+        <span class="scenes__counter" aria-live="polite">
+          <span data-counter-current>1</span> / {scenes.length}
+        </span>
+        <button type="button" class="scenes__ctrl" data-next aria-label="Следующая сцена">
+          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+        </button>
+      </div>
     </div>
   </section>
 
@@ -164,7 +202,7 @@ const has = (id: string, file: string) => existsSync(join(process.cwd(), 'public
             </p>
           </div>
         </div>
-        <div class="grid grid--4 services-grid">
+        <div class="grid grid--3 services-grid">
           {services.map((s) => <ServiceCard service={s} />)}
         </div>
       </div>
@@ -252,6 +290,14 @@ const has = (id: string, file: string) => existsSync(join(process.cwd(), 'public
     color: var(--cream);
     overflow: hidden;
     isolation: isolate;
+    /* вверх-вниз палец листает страницу, вбок — сцены (это ловит плеер) */
+    touch-action: pan-y;
+    cursor: pointer;
+  }
+
+  .scenes a,
+  .scenes button {
+    cursor: pointer;
   }
 
   .scenes__stage {
@@ -291,8 +337,9 @@ const has = (id: string, file: string) => existsSync(join(process.cwd(), 'public
     --shade-x: 0.509;
     --shade-y: 0.47;
     --shade-w: 0.18;
-    --img-w: max(100cqw, calc(100cqh * 16 / 9));
-    --img-h: calc(var(--img-w) * 9 / 16);
+    --img-ratio: 1.7778; /* ширина к высоте кадра */
+    --img-w: max(100cqw, calc(100cqh * var(--img-ratio)));
+    --img-h: calc(var(--img-w) / var(--img-ratio));
     position: absolute;
     z-index: 4;
     left: calc(50cqw + (var(--shade-x) - 0.5) * var(--img-w));
@@ -327,8 +374,22 @@ const has = (id: string, file: string) => existsSync(join(process.cwd(), 'public
     display: none;
   }
 
-  .scene__media > img,
-  .scene__media > video {
+  /* телефон вертикально: кадр шторки — полоса 406×720 по центру иллюминатора */
+  @media (max-aspect-ratio: 2/3) {
+    .shade-text {
+      --img-ratio: 0.5639;
+      --shade-x: 0.528;
+      --shade-w: 0.567;
+    }
+  }
+
+  /* обёртка для мобильной версии картинки не должна влиять на раскладку */
+  .scene__pic {
+    display: contents;
+  }
+
+  .scene__media img,
+  .scene__media video {
     position: absolute;
     inset: 0;
     width: 100%;
@@ -336,6 +397,14 @@ const has = (id: string, file: string) => existsSync(join(process.cwd(), 'public
     object-fit: cover;
     /* на вертикальном экране видна только полоса кадра, --focus сдвигает её к главному */
     object-position: calc(var(--focus, 0.5) * 100%) 50%;
+  }
+
+  /* телефон вертикально: картинки и видео уже вырезаны вокруг главного (файлы -m), центрируем */
+  @media (max-aspect-ratio: 2/3) {
+    .scene__media img,
+    .scene__media video {
+      object-position: 50% 50%;
+    }
   }
 
   .scene__poster {
@@ -590,12 +659,53 @@ const has = (id: string, file: string) => existsSync(join(process.cwd(), 'public
     animation: nudge 1.6s var(--ease-in-out) infinite;
   }
 
-  .scenes.has-moved .scenes__hint {
-    opacity: 0;
-    pointer-events: none;
+  /* стрелки «‹ ›», пауза автопоказа и счётчик сцен */
+  .scenes__controls {
+    pointer-events: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .scenes__ctrl {
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    color: var(--cream);
+    background: rgba(15, 12, 10, 0.35);
+    border: 1px solid var(--cream-15);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    transition:
+      background var(--dur-fast),
+      border-color var(--dur-fast);
+  }
+
+  .scenes__ctrl:hover {
+    background: rgba(15, 12, 10, 0.6);
+    border-color: var(--cream-40);
+  }
+
+  .scenes__ctrl[data-pause] {
+    width: 36px;
+    height: 36px;
+    margin-right: 6px;
+  }
+
+  .scenes__ico-play,
+  .scenes.is-paused .scenes__ico-pause {
+    display: none;
+  }
+
+  .scenes.is-paused .scenes__ico-play {
+    display: block;
   }
 
   .scenes__counter {
+    min-width: 3.2em;
+    text-align: center;
     font-family: var(--font-display);
     font-size: 0.85rem;
     color: var(--cream-70);
@@ -619,19 +729,6 @@ const has = (id: string, file: string) => existsSync(join(process.cwd(), 'public
   }
 
   /* подсказка: мышь листает вниз, палец — вверх или в сторону */
-  .scenes__hint-touch {
-    display: none;
-  }
-
-  @media (pointer: coarse) {
-    .scenes__hint-mouse {
-      display: none;
-    }
-    .scenes__hint-touch {
-      display: inline;
-    }
-  }
-
   @keyframes nudge {
     0%,
     100% {
